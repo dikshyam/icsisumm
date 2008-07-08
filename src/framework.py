@@ -1,5 +1,5 @@
 import os, sys, re
-import util, compression, text
+import util, compression, text, ilp
 from globals import *    
 import nltk
 
@@ -307,3 +307,96 @@ def get_program_result(program):
                 selection.append(sentence)
                 #print node.root.getPrettyCandidates()
     return selection           
+
+def build_alternative_program(problem, concept_weight, length=100, sentences = None):
+    if not sentences:
+        sentences = problem.get_new_sentences()
+
+    for sentence in sentences:
+        if not hasattr(sentence, "compression_node"):
+            sentence.compression_node = compression.TreebankNode(sentence.parsed)
+
+    mapper = compression.EquivalentNounPhraseMapper()
+    nounPhraseMapping = mapper.getMappings([s.compression_node for s in sentences])
+    
+    #log_file = open("%s.log" % problem.id, "w")
+    compressed_sentences = []
+    group_id = 0
+    for sentence in sentences:
+        subsentences = sentence.compression_node.getNodesByFilter(compression.TreebankNode.isSubsentence)
+        seen = {}
+        for node in subsentences:
+            for candidate in node.getCandidates(mapping=nounPhraseMapping):
+                if candidate not in seen:
+                    seen[candidate] = 1
+                    new_sentence = text.Sentence(compression.postProcess(candidate), sentence.order, sentence.source, sentence.date)
+                    new_sentence.group_id = group_id
+                    compressed_sentences.append(new_sentence)
+                    #log_file.write("%d %s\n" %( group_id, str(new_sentence)))
+        group_id += 1
+    #log_file.close()
+    
+    # get concepts
+    relevant_sentences = []
+    sentence_concepts = []
+    groups = {}
+    used_concepts = set()
+    sent_index = 0
+    for sentence in compressed_sentences:
+        units = util.get_ngrams(sentence.stemmed, n=2, bounds=False)
+        overlapping = set([u for u in units if u in concept_weight])
+        if len(overlapping) == 0: continue
+        relevant_sentences.append(sentence)
+        sentence_concepts.append(overlapping)
+        used_concepts.update(overlapping)
+        if sentence.group_id not in groups: groups[sentence.group_id] = []
+        groups[sentence.group_id].append(sent_index)
+        sent_index += 1
+
+    # build inverted index
+    filtered_concepts = {}
+    concept_index = {}
+    index = 0
+    for concept in used_concepts:
+        concept_index[concept] = index
+        filtered_concepts[concept] = concept_weight[concept]
+        index += 1
+    relevant_sent_concepts = [[concept_index[c] for c in cs] for cs in sentence_concepts]
+    concept_weights = filtered_concepts
+    curr_concept_sents = {}
+    for sent_index in range(len(relevant_sentences)):
+        concepts = relevant_sent_concepts[sent_index]
+        for concept in concepts:
+            if not concept in curr_concept_sents: curr_concept_sents[concept] = []
+            curr_concept_sents[concept].append(sent_index)
+
+    # generate the actual ILP
+    program = ilp.IntegerLinearProgram()
+
+    program.objective["score"] = ' + '.join(['%f c%d' %(concept_weight[concept], concept_index[concept]) for concept in concept_index])
+    
+    s1 = ' + '.join(['%d s%d' %(relevant_sentences[sent_index].length, sent_index) for sent_index in range(len(relevant_sentences))])
+    s2 = ' <= %s\n' %length
+    program.constraints["length"] = s1 + s2
+    
+    for concept, index in concept_index.items():
+        ## at least one sentence containing a selected bigram must be selected
+        s1 = ' + '.join([ 's%d' %sent_index for sent_index in curr_concept_sents[index]])
+        s2 = ' - c%d >= 0' %index                    
+        program.constraints["presence_%d" % index] = s1 + s2
+        ## if a bigram is not selected then all sentences containing it are deselected
+        s1 = ' + '.join([ 's%d' %sent_index for sent_index in curr_concept_sents[index]])
+        s2 = '- %d c%d <= 0' %(len(curr_concept_sents[index]), index)
+        program.constraints["absence_%d" % index] = s1 + s2
+
+    # add sentence compression groups
+    for group in groups:
+        program.constraints["group_%d" % group] = " + ".join(["s%d" % sent_index for sent_index in groups[group]]) + " <= 1"
+
+    for sent_index in range(len(relevant_sentences)):
+        program.binary["s%d" % sent_index] = relevant_sentences[sent_index]
+    for concept, concept_index in concept_index.items():
+        program.binary["c%d" % concept_index] = 1
+
+    sys.stderr.write("compression candidates: %d, original: %d\n" % (len(relevant_sentences), len(sentences)))
+    return program

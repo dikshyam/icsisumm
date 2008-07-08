@@ -596,10 +596,10 @@ def query_expand(docs, unit_selector, query):
         entropy_sent = prob_util.entropy(sent_values)
         entropy_unit = prob_util.entropy(unit_values)
         dist = prob_util.klDistance(prev_sent_values, sent_values)
-        print '%d sent entropy [%1.4f]  unit entropy [%1.4f]  sent dist [%1.6f]' %(iter, entropy_sent, entropy_unit, dist)
+        sys.stderr.write('%d sent entropy [%1.4f]  unit entropy [%1.4f]  sent dist [%1.6f]\n' %(iter, entropy_sent, entropy_unit, dist))
         if iter == 2: break
         if dist < 0.0001:
-            print '----------------------------'
+            sys.stderr.write('----------------------------')
             break
         
     return prob_util.Counter(unit_values), prob_util.Counter(sent_values)

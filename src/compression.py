@@ -148,12 +148,12 @@ class TreebankNode (TreeNode):
             return False
         return True
 
-    def getCandidates(self, beam = 0):
+    def getCandidates(self, beam = 0, mapping = None):
         output = {"":0}
         if self.text != "":
             output = {" %s" % self.text:1}
         for child in self.children:
-            child_output = child.getCandidates(beam)
+            child_output = child.getCandidates(beam, mapping)
             new_output = {}
             for i in output.keys():
                 for j in child_output.keys():
@@ -168,6 +168,13 @@ class TreebankNode (TreeNode):
             output = new_output
         if self.isRemovable():
             output[""] = 0
+        if mapping and self.label == "NP":
+            text = " ".join(str(leaf) for leaf in self.leaves)
+            leaves_text = " ".join(leaf.text for leaf in self.leaves)
+            if text in mapping:
+                mapped_text = re.sub(r'(\([^ ]+ |\))', '', mapping[text])
+                if leaves_text != mapped_text:
+                    output[" " + mapped_text] = len(mapped_text.split())
         return output
 
     def getNonCompressedTree(self):
@@ -543,12 +550,12 @@ if __name__ == "__main__":
         #candidates = root.getCandidateTree()
         #leaves = [leaf for leaf in root.leaves if re.match(r'[a-zA-Z]', leaf.label)]
         #if len(leaves) == 0 or not (leaves[0].hasParent('ADVP')): continue
-        text = root.getTabbedRepresentation()
-        if ":23 " not in text:
-            continue
-        print root.getText()
-        print text
+        #text = root.getTabbedRepresentation()
+        #print root.getText()
+        #print text
         #print candidates
+        for subroot in root.getNodesByFilter(TreebankNode.isSubsentence):
+            print subroot.getCandidates()
         print
     sys.exit(0)
 

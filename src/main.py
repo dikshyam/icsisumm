@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, re
 import framework, berkeleyparser, concept_mapper, ordering
 from globals import *
 
@@ -58,17 +58,22 @@ if __name__ == '__main__':
     if options.compress:
         ## sentence compression
         for problem in task.problems:
-            print problem.id, sum([len(doc.sentences) for doc in problem.new_docs])
+            sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))
             mapper = concept_mapper.HeuristicMapperExp(problem, "n2", None)
             mapper.map_concepts()
             mapper.choose_sents()
             concept_weight = mapper.concept_weight_sets[0]
             #print concept_weight
-            program = framework.build_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
+            #program = framework.build_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
+            program = framework.build_alternative_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
             # run the program and get the output
             program.debug = 0
             program.run()
-            selection = framework.get_program_result(program)
+            #selection = framework.get_program_result(program)
+            selection = []
+            for variable in program.output:
+                if re.match(r'^s\d+$', variable) and program.output[variable] == 1:
+                    selection.append(program.binary[variable])
             output_file = open("%s/%s" % (options.output, problem.id), "w")
             selection = ordering.by_date(selection)
             for sentence in selection:
@@ -77,7 +82,7 @@ if __name__ == '__main__':
     else:    
         ## no sentence compression
         for problem in task.problems:
-            print problem.id, sum([len(doc.sentences) for doc in problem.new_docs])
+            sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))
             mapper = concept_mapper.HeuristicMapperExp(problem, "n2", None)
             #mapper = concept_mapper.CheatingMapper(problem, "n2", None)
             mapper.map_concepts()
