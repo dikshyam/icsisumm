@@ -1,5 +1,5 @@
 import os, sys, re
-import util, prob_util, berkeleyparser, sentence_compression, treenode, ilp, concept_mapper
+import util
 from globals import *    
 import nltk
 
@@ -111,6 +111,9 @@ class Sentence:
         w1 = set(self.no_stop)
         w2 = set(s.no_stop)
         return 1.0 * len(w1.intersection(w2)) / max(len(w1), len(w2))
+
+    def __str__(self):
+        return self.original
 
 class Document:
     """

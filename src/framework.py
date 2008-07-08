@@ -1,5 +1,5 @@
 import os, sys, re
-import util, sentence_compression, text
+import util, compression, text
 from globals import *    
 import nltk
 
@@ -229,8 +229,8 @@ def setup_DUC_sentences(task, parser=None, reload=False):
 #    concept_weight = {}
 #
 #    for sentence in problem.get_new_sentences():
-#        sentence.compression_node = sentence_compression.SentenceCompressionNode(sentence.parsed)
-#        for concept in sentence_compression.get_bigrams_from_node(sentence.compression_node, use_leaves = True, return_length = False):
+#        sentence.compression_node = compression.TreebankNode(sentence.parsed)
+#        for concept in compression.get_bigrams_from_node(sentence.compression_node, use_leaves = True, return_length = False):
 #            if concept not in concept_weight: concept_weight[concept] = 0
 #            concept_weight[concept] += 1
 #    for concept in concept_weight.keys():
@@ -244,21 +244,22 @@ def build_program(problem, concept_weight, length=100, sentences = None):
     # the ILP keeps tracks of the constraints
     # s<num> variables handle sentences, subsentences and removable subtrees
     # c<num> variables represent concepts in those selected pseudo-sentences
-    program = sentence_compression.SentenceSelectionILP(concept_weight, length, use_subsentences=True, use_removables=True, 
+    program = compression.SentenceSelectionILP(concept_weight, length, use_subsentences=True, use_removables=True, 
                                                         use_min_length=True, use_min_length_ratio=False)
     if not sentences:
         sentences = problem.get_new_sentences()
     for sentence in sentences:
         if not hasattr(sentence, "compression_node"):
-            sentence.compression_node = sentence_compression.SentenceCompressionNode(sentence.parsed)
+            sentence.compression_node = compression.TreebankNode(sentence.parsed)
 
-    mapper = sentence_compression.EquivalentNounPhraseMapper()
+    mapper = compression.EquivalentNounPhraseMapper()
     nounPhraseMapping = mapper.getMappings([s.compression_node for s in sentences])
     
     for sentence in sentences:
         ## generate a compression candidate tree
         candidates = sentence.compression_node.getCandidateTree(nounPhraseMapping)
-        candidate_root = sentence_compression.SentenceCompressionNode(candidates)
+        candidate_root = compression.TreebankNode(candidates)
+        candidate_root.sentence = sentence
         
         ## (or a non compressed tree)
         #candidate_root = treenode.TreeNode(sentence.compression_node.getNonCompressedCandidate())
@@ -270,11 +271,12 @@ def build_program(problem, concept_weight, length=100, sentences = None):
         #candidate_root.original_text = candidates
 
         # update ILP with the new sentence
-        program.addSentence(candidate_root, lambda x: sentence_compression.get_bigrams_from_node(x, 
+        program.addSentence(candidate_root, lambda x: compression.get_bigrams_from_node(x, 
             node_skip=lambda y: not re.match(r'[A-Za-z0-9]', y.label), node_transform=lambda y: text.text_processor.porter_stem(y.text.lower())))
 
+        # skip debugging part
         continue
-        sentence_concepts = program.getConcepts(candidate_root, lambda x: sentence_compression.get_bigrams_from_node(x,
+        sentence_concepts = program.getConcepts(candidate_root, lambda x: compression.get_bigrams_from_node(x,
                     node_skip=lambda y: not re.match(r'[A-Za-z0-9]', y.label), node_transform=lambda y: text.text_processor.porter_stem(y.text.lower())))
         print sentence.original
         print candidate_root.getPrettyCandidates()
@@ -290,18 +292,18 @@ def build_program(problem, concept_weight, length=100, sentences = None):
 
     return program
 
-def get_program_result(program, path):
+def get_program_result(program):
     # get the selected sentences
-    text = []
+    selection = []
     for id in program.output:
         if id.startswith("s") and program.output[id] == 1:
             node = program.binary[id] # gives you back the actual node (which can be a subsentence, or a chunk not removed)
             if not program.nodeHasSelectedParent(node): # only start printing at the topmost nodes
-                text.append(sentence_compression.postProcess(program.getSelectedText(node)))
+                # create a fake sentence to hold the compressed content
+                sentence = text.Sentence(compression.postProcess(program.getSelectedText(node)), \
+                        node.root.sentence.order, node.root.sentence.source, node.root.sentence.date)
+                sentence.parsed = str(node)
+                sentence.original_node = node
+                selection.append(sentence)
                 #print node.root.getPrettyCandidates()
-                
-    fh = open(path, 'w')
-    fh.write('\n'.join(text) + '\n')
-    fh.close()
-
-
+    return selection           

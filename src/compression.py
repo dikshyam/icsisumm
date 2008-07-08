@@ -2,7 +2,7 @@ from treenode import *
 from ilp import *
 import re, sys
 
-class SentenceCompressionNode (TreeNode):
+class TreebankNode (TreeNode):
     def __init__(self, text, start = 0, parent = None, root = None):
         TreeNode.__init__(self, text, start, parent, root)
 
@@ -537,8 +537,8 @@ class EquivalentNounPhraseMapper:
 if __name__ == "__main__":
     import sys
     for line in sys.stdin.readlines():
-        root = SentenceCompressionNode(line.strip())
-        #nodes = root.getNodesByFilter(SentenceCompressionNode.isDayNounPhrase)
+        root = TreebankNode(line.strip())
+        #nodes = root.getNodesByFilter(TreebankNode.isDayNounPhrase)
         #if len(nodes) == 0: continue
         #candidates = root.getCandidateTree()
         #leaves = [leaf for leaf in root.leaves if re.match(r'[a-zA-Z]', leaf.label)]
@@ -560,7 +560,7 @@ if __name__ == "__main__":
     concept_weight = {}
     roots = []
     for line in lines:
-        root = SentenceCompressionNode(line.strip())
+        root = TreebankNode(line.strip())
         roots.append(root)
         for concept in get_bigrams_from_node(root, use_leaves = True, return_length = False):
             if concept not in concept_weight: concept_weight[concept] = 0
@@ -582,7 +582,7 @@ if __name__ == "__main__":
     for root in roots:
         # generate a compression candidate tree (or a non compressed tree)
         candidates = root.getCandidateTree(nounPhraseMapping)
-        candidate_root = SentenceCompressionNode(candidates)
+        candidate_root = TreebankNode(candidates)
         #candidate_root = TreeNode(root.getNonCompressedCandidate())
         candidate_root.original = root
         candidate_root.original_text = candidates

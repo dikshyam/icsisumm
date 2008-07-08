@@ -1,5 +1,5 @@
 import sys, os
-import framework, berkeleyparser, concept_mapper
+import framework, berkeleyparser, concept_mapper, ordering
 from globals import *
 
 def parse_options():
@@ -65,12 +65,15 @@ if __name__ == '__main__':
             concept_weight = mapper.concept_weight_sets[0]
             #print concept_weight
             program = framework.build_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
-
-            # finish and run the program (and get the output)
+            # run the program and get the output
             program.debug = 0
             program.run()
-            output_path = '%s/%s' %(options.output, problem.id)
-            framework.get_program_result(program, output_path)
+            selection = framework.get_program_result(program)
+            output_file = open("%s/%s" % (options.output, problem.id), "w")
+            selection = ordering.by_date(selection)
+            for sentence in selection:
+                output_file.write(sentence.original + "\n")
+            output_file.close()
     else:    
         ## no sentence compression
         for problem in task.problems:
@@ -81,6 +84,7 @@ if __name__ == '__main__':
             mapper.choose_sents()
             selection = mapper.format_output("ilp", task.length_limit)
             output_file = open("%s/%s" % (options.output, problem.id), "w")
+            selection = ordering.by_date(selection)
             for sentence in selection:
                 output_file.write(sentence.original + "\n")
             output_file.close()
