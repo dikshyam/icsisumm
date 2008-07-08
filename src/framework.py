@@ -271,7 +271,22 @@ def build_program(problem, concept_weight, length=100, sentences = None):
 
         # update ILP with the new sentence
         program.addSentence(candidate_root, lambda x: sentence_compression.get_bigrams_from_node(x, 
-            node_skip=lambda y: False, node_transform=lambda y: text.text_processor.porter_stem(y.text)))
+            node_skip=lambda y: not re.match(r'[A-Za-z0-9]', y.label), node_transform=lambda y: text.text_processor.porter_stem(y.text.lower())))
+
+        continue
+        sentence_concepts = program.getConcepts(candidate_root, lambda x: sentence_compression.get_bigrams_from_node(x,
+                    node_skip=lambda y: not re.match(r'[A-Za-z0-9]', y.label), node_transform=lambda y: text.text_processor.porter_stem(y.text.lower())))
+        print sentence.original
+        print candidate_root.getPrettyCandidates()
+        for concept in sentence_concepts.keys():
+            if concept not in concept_weight:
+                del sentence_concepts[concept]
+        print sorted(sentence_concepts.keys())
+        units = dict([(x, 1) for x in util.get_ngrams(sentence.stemmed, n=2, bounds=False)])
+        for concept in units.keys():
+            if concept not in concept_weight:
+                del units[concept]
+        print sorted(units.keys())
 
     return program
 

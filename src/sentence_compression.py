@@ -325,6 +325,13 @@ class SentenceSelectionILP(IntegerLinearProgram):
             return len(node.getParentsByFilter(lambda x: self.nodeIsSubsentence(x))) > 0 and node.label.endswith("+A")
         return False
 
+    def getConcepts(self, node, get_concepts_from_node):
+        length, concepts = get_concepts_from_node(node)
+        for child in node.children:
+            if not child.isLeaf():
+                concepts.update(self.getConcepts(child, get_concepts_from_node))
+        return concepts
+
     def addSentence(self, node, get_concepts_from_node):
         if self.nodeIsSubsentence(node) or self.nodeIsRemovable(node) or self.nodeIsAlternative(node):
             node.id = "s%d" % self.next_sentence_id
