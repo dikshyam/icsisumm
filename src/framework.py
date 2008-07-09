@@ -316,9 +316,9 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
             sentence.compression_node = compression.TreebankNode(sentence.parsed)
 
     nounPhraseMapping = compression.generateNounPhraseMapping([s.compression_node for s in sentences])
-    print "generating acronyms"
+    #print "generating acronyms"
     acronymMapping = compression.generateAcronymMapping(problem.get_new_sentences())
-    print acronymMapping
+    print problem.id, acronymMapping
     
     #log_file = open("%s.log" % problem.id, "w")
     compressed_sentences = []
@@ -338,6 +338,8 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
                     #log_file.write("%d %s\n" %( group_id, str(new_sentence)))
         group_id += 1
     #log_file.close()
+
+    # replace acronyms
     for sentence in compressed_sentences:
         for acronym in acronymMapping:
             form1 = str("%s (%s)" % (acronym, acronymMapping[acronym]))

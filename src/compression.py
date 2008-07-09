@@ -105,6 +105,10 @@ class TreebankNode (TreeNode):
                 self.reason = 7
                 return True
         if self.label == "SBAR": # and self.parent.label != "VP":
+            # prevent "He said (+R on Thursday) (+R that he is going to ...)"
+            if self.previousSlibling != None and self.previousSlibling.isRemovable():
+                self.reason = 14
+                return False
             # would break "as soon as and comparatives" (but "as" used as "because" can be removed)
             if self.leaves[0].text == "as" and self.parent.hasLeaf(lambda x: x.text == "as" and not x.hasParent(self)):
                 self.reason = 11
@@ -608,15 +612,13 @@ if __name__ == "__main__":
         root = TreebankNode(line.strip())
         #nodes = root.getNodesByFilter(TreebankNode.isDayNounPhrase)
         #if len(nodes) == 0: continue
-        #candidates = root.getCandidateTree()
+        candidates = TreebankNode(root.getCandidateTree())
         #leaves = [leaf for leaf in root.leaves if re.match(r'[a-zA-Z]', leaf.label)]
         #if len(leaves) == 0 or not (leaves[0].hasParent('ADVP')): continue
         #text = root.getTabbedRepresentation()
         #print root.getText()
         #print text
-        #print candidates
-        for subroot in root.getNodesByFilter(TreebankNode.isSubsentence):
-            print subroot.getCandidates()
+        print candidates.getPrettyCandidates()
         print
     sys.exit(0)
 

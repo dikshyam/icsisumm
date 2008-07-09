@@ -45,6 +45,7 @@ if __name__ == '__main__':
     else:
         framework.setup_DUC_basic(task)
 
+    # only run the parser if compression is required (this is not known by the pickle stuff)
     parser = None
     if options.compress:
         parser = berkeleyparser.CommandLineParser(BERKELEY_PARSER_CMD)
