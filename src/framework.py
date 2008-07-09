@@ -15,7 +15,7 @@ class SummaryProblem:
         self.id = id
         self.title = title
         self.narr = narr
-        self.query = text.Sentence(title)#+": "+ narr)
+        self.query = text.Sentence(title+": "+ narr)
         self.new_docs_paths = new_docs[:]
         self.old_docs_paths = old_docs[:]
 

@@ -10,7 +10,7 @@ class TextProcessor:
         self._stopwords = set(open(STOPWORDS).read().splitlines())
         self._porter_stemmer = nltk.stem.porter.PorterStemmer()
         self._sent_tokenizer = util.load_pickle('%s%s' %(STATIC_DATA_ROOT, 'punkt/english.pickle'))
-        self._sent_split_ABBR_LIST = set(['Mr.', 'Mrs.', 'Sen.', 'No.', 'Dr.'])
+        self._sent_split_ABBR_LIST = set(['Mr.', 'Mrs.', 'Sen.', 'No.', 'Dr.', 'Gen.', 'St.', 'Lt.', 'Col.'])
         self._sent_split_PUNCT_LIST = set(['\" ', '\")', ') ', '\' ', '\"\''])
 
     def load_punkt_model(self, path):
