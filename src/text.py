@@ -84,13 +84,15 @@ class Sentence:
     """
     
     def __init__(self, text, order = 0, source = "?", date = "?"):
-        self.original = text
-        self.parsed = None
-        #self.length = len(re.split(r'[^A-Za-z0-9]+', text))
-        self.length = len(text.strip().split())
         self.order = order
         self.date = date
         self.source = source
+        self.set_text(text)
+
+    def set_text(self, text):
+        self.original = text.strip()
+        self.parsed = None
+        self.length = len(self.original.split())
         self.tokens = text_processor.tokenize(text_processor.remove_punct(self.original.lower()))
         self.stemmed = map(text_processor.porter_stem, self.tokens)
         self.no_stop = map(text_processor.porter_stem, text_processor.remove_stopwords(self.tokens))

@@ -1,5 +1,5 @@
 import sys, os, re
-import framework, berkeleyparser, concept_mapper, ordering
+import framework, berkeleyparser, concept_mapper, ordering, compression
 from globals import *
 
 def parse_options():
@@ -66,7 +66,7 @@ if __name__ == '__main__':
             concept_weight = mapper.concept_weight_sets[0]
             #print concept_weight
             #program = framework.build_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
-            program = framework.build_alternative_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
+            program = framework.build_alternative_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0], longuest_candidate_only=False)
             # run the program and get the output
             program.debug = 0
             program.run()
@@ -75,10 +75,11 @@ if __name__ == '__main__':
             for variable in program.output:
                 if re.match(r'^s\d+$', variable) and program.output[variable] == 1:
                     selection.append(program.binary[variable])
-            output_file = open("%s/%s" % (options.output, problem.id), "w")
             selection = ordering.by_date(selection)
-            for sentence in selection:
-                output_file.write(sentence.original + "\n")
+            summary = "\n".join(sentence.original for sentence in selection)
+            summary = compression.addAcronymDefinitionsToSummary(summary, program.acronyms)
+            output_file = open("%s/%s" % (options.output, problem.id), "w")
+            output_file.write(summary)
             output_file.close()
     else:    
         ## no sentence compression
@@ -89,8 +90,8 @@ if __name__ == '__main__':
             mapper.map_concepts()
             mapper.choose_sents()
             selection = mapper.format_output("ilp", task.length_limit)
-            output_file = open("%s/%s" % (options.output, problem.id), "w")
             selection = ordering.by_date(selection)
+            output_file = open("%s/%s" % (options.output, problem.id), "w")
             for sentence in selection:
                 output_file.write(sentence.original + "\n")
             output_file.close()

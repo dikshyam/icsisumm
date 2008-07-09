@@ -307,7 +307,7 @@ def get_program_result(program):
                 #print node.root.getPrettyCandidates()
     return selection           
 
-def build_alternative_program(problem, concept_weight, length=100, sentences = None):
+def build_alternative_program(problem, concept_weight, length=100, sentences = None, longuest_candidate_only=False):
     if not sentences:
         sentences = problem.get_new_sentences()
 
@@ -320,49 +320,51 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
     acronymMapping = compression.generateAcronymMapping(problem.get_new_sentences())
     print problem.id, acronymMapping
     
-    #log_file = open("%s.log" % problem.id, "w")
     compressed_sentences = []
     seen_sentences = {}
     group_id = 0
     for sentence in sentences:
         subsentences = sentence.compression_node.getNodesByFilter(compression.TreebankNode.isSubsentence)
-        seen = {}
+        candidates = {}
         for node in subsentences:
-            for candidate in node.getCandidates(mapping=nounPhraseMapping):
-                if candidate not in seen:
-                    seen[candidate] = 1
-                    new_sentence = text.Sentence(compression.postProcess(candidate), sentence.order, sentence.source, sentence.date)
-                    new_sentence.group_id = group_id
-                    compressed_sentences.append(new_sentence)
-                    seen_sentences[new_sentence.original] = 1
-                    #log_file.write("%d %s\n" %( group_id, str(new_sentence)))
+            candidates.update(node.getCandidates(mapping=nounPhraseMapping))
+        if longuest_candidate_only:
+            max_length = 0
+            argmax = None
+            for candidate in candidates:
+                if len(candidate) > max_length:
+                    max_length = len(candidate)
+                    argmax = candidate
+            if argmax != None:
+                candidates = [argmax]
+        for candidate in candidates:
+            new_sentence = text.Sentence(compression.postProcess(candidate), sentence.order, sentence.source, sentence.date)
+            if new_sentence.length <= 5: continue # skip short guys
+            new_sentence.group_id = group_id
+            compressed_sentences.append(new_sentence)
+            seen_sentences[new_sentence.original] = 1
         group_id += 1
-    #log_file.close()
 
-    # replace acronyms
+    compression.replaceAcronyms(compressed_sentences, acronymMapping)
+    log_file = open("%s.log" % problem.id, "w")
     for sentence in compressed_sentences:
-        for acronym in acronymMapping:
-            form1 = str("%s (%s)" % (acronym, acronymMapping[acronym]))
-            form2 = str("%s(%s)" % (acronym, acronymMapping[acronym]))
-            new_text = None
-            if form1 in sentence.original:
-                new_text = sentence.original.replace(form1, acronymMapping[acronym])
-            elif form2 in sentence.original:
-                new_text = sentence.original.replace(form2, acronymMapping[acronym])
-            elif acronym in sentence.original:
-                new_text = sentence.original.replace(acronym, acronymMapping[acronym])
-            if new_text and new_text not in seen_sentences:
-                new_sentence = text.Sentence(new_text, sentence.order, sentence.source, sentence.date)
-                new_sentence.group_id = sentence.group_id
-                compressed_sentences.append(new_sentence)
-                seen_sentences[new_sentence.original] = 1
-                #print "added [%s]" % new_text
+        log_file.write("%d %s\n" %( group_id, str(sentence)))
+    log_file.close()
+
+    # generate ids for acronyms
+    acronym_id = {}
+    acronym_length = {}
+    for definition, acronym in acronymMapping.items():
+        if acronym not in acronym_id:
+            acronym_id[acronym] = len(acronym_id)
+            acronym_length[acronym] = len(definition.strip().split())
     
     # get concepts
     relevant_sentences = []
     sentence_concepts = []
     groups = {}
     used_concepts = set()
+    acronym_index = {}
     sent_index = 0
     for sentence in compressed_sentences:
         units = util.get_ngrams(sentence.stemmed, n=2, bounds=False)
@@ -373,6 +375,11 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         used_concepts.update(overlapping)
         if sentence.group_id not in groups: groups[sentence.group_id] = []
         groups[sentence.group_id].append(sent_index)
+        # generate an acronym index
+        for acronym in acronym_id:
+            if re.search(r'\b' + acronym + r'\b', sentence.original):
+                if acronym not in acronym_index: acronym_index[acronym] = []
+                acronym_index[acronym].append(sent_index)
         sent_index += 1
 
     # build inverted index
@@ -398,8 +405,12 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
     program.objective["score"] = ' + '.join(['%f c%d' %(concept_weight[concept], concept_index[concept]) for concept in concept_index])
     
     s1 = ' + '.join(['%d s%d' %(relevant_sentences[sent_index].length, sent_index) for sent_index in range(len(relevant_sentences))])
+    # add enough space to fit the definition of each acronym employed in the summary
+    s_acronyms = ' + '.join(['%d a%d' %(acronym_length[acronym], acronym_id[acronym]) for acronym in acronym_id])
+    if s_acronyms != "":
+        s_acronyms = " + " + s_acronyms
     s2 = ' <= %s\n' %length
-    program.constraints["length"] = s1 + s2
+    program.constraints["length"] = s1 + s_acronyms + s2
     
     for concept, index in concept_index.items():
         ## at least one sentence containing a selected bigram must be selected
@@ -411,6 +422,15 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         s2 = '- %d c%d <= 0' %(len(curr_concept_sents[index]), index)
         program.constraints["absence_%d" % index] = s1 + s2
 
+    # constraints so that acronyms get selected along with sentences they belong to
+    for acronym, index in acronym_index.items():
+        s1 = ' + '.join([ 's%d' %sent_index for sent_index in index])
+        s2 = ' - a%d >= 0' %acronym_id[acronym]                    
+        program.constraints["acronym_presence_%d" % acronym_id[acronym]] = s1 + s2
+        s1 = ' + '.join([ 's%d' %sent_index for sent_index in index])
+        s2 = '- %d a%d <= 0' %(len(index), acronym_id[acronym])
+        program.constraints["acronym_absence_%d" % acronym_id[acronym]] = s1 + s2
+
     # add sentence compression groups
     for group in groups:
         program.constraints["group_%d" % group] = " + ".join(["s%d" % sent_index for sent_index in groups[group]]) + " <= 1"
@@ -419,6 +439,9 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         program.binary["s%d" % sent_index] = relevant_sentences[sent_index]
     for concept, concept_index in concept_index.items():
         program.binary["c%d" % concept_index] = 1
+    for acronym, id in acronym_id.items():
+        program.binary["a%d" % id] = 1
 
     sys.stderr.write("compression candidates: %d, original: %d\n" % (len(relevant_sentences), len(sentences)))
+    program.acronyms = acronymMapping
     return program

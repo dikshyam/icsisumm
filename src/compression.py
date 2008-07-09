@@ -606,6 +606,19 @@ def generateAcronymMapping(sentences):
                 output[mapping] = acronym
     return output
 
+def replaceAcronyms(sentences, mapping):
+    for sentence in sentences:
+        text = sentence.original
+        for definition, acronym in mapping.items():
+            text = re.sub(r'\b' + definition + r'(\s*(\(' + acronym + r'\))|\b)', acronym, text)
+        if text != sentence.original:
+            sentence.set_text(text)
+
+def addAcronymDefinitionsToSummary(summary, mapping):
+    for definition, acronym in mapping.items():
+        summary = re.sub(r'\b' + acronym + r'([^A-Za-z0-9\'-])', definition + ' (' + acronym + r')\1', summary, 1)
+    return summary
+
 if __name__ == "__main__":
     import sys
     for line in sys.stdin.readlines():
