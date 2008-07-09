@@ -252,8 +252,7 @@ def build_program(problem, concept_weight, length=100, sentences = None):
         if not hasattr(sentence, "compression_node"):
             sentence.compression_node = compression.TreebankNode(sentence.parsed)
 
-    mapper = compression.EquivalentNounPhraseMapper()
-    nounPhraseMapping = mapper.getMappings([s.compression_node for s in sentences])
+    nounPhraseMapping = compression.generateNounPhraseMapping([s.compression_node for s in sentences])
     
     for sentence in sentences:
         ## generate a compression candidate tree
@@ -316,11 +315,14 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         if not hasattr(sentence, "compression_node"):
             sentence.compression_node = compression.TreebankNode(sentence.parsed)
 
-    mapper = compression.EquivalentNounPhraseMapper()
-    nounPhraseMapping = mapper.getMappings([s.compression_node for s in sentences])
+    nounPhraseMapping = compression.generateNounPhraseMapping([s.compression_node for s in sentences])
+    print "generating acronyms"
+    acronymMapping = compression.generateAcronymMapping(problem.get_new_sentences())
+    print acronymMapping
     
     #log_file = open("%s.log" % problem.id, "w")
     compressed_sentences = []
+    seen_sentences = {}
     group_id = 0
     for sentence in sentences:
         subsentences = sentence.compression_node.getNodesByFilter(compression.TreebankNode.isSubsentence)
@@ -332,9 +334,27 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
                     new_sentence = text.Sentence(compression.postProcess(candidate), sentence.order, sentence.source, sentence.date)
                     new_sentence.group_id = group_id
                     compressed_sentences.append(new_sentence)
+                    seen_sentences[new_sentence.original] = 1
                     #log_file.write("%d %s\n" %( group_id, str(new_sentence)))
         group_id += 1
     #log_file.close()
+    for sentence in compressed_sentences:
+        for acronym in acronymMapping:
+            form1 = str("%s (%s)" % (acronym, acronymMapping[acronym]))
+            form2 = str("%s(%s)" % (acronym, acronymMapping[acronym]))
+            new_text = None
+            if form1 in sentence.original:
+                new_text = sentence.original.replace(form1, acronymMapping[acronym])
+            elif form2 in sentence.original:
+                new_text = sentence.original.replace(form2, acronymMapping[acronym])
+            elif acronym in sentence.original:
+                new_text = sentence.original.replace(acronym, acronymMapping[acronym])
+            if new_text and new_text not in seen_sentences:
+                new_sentence = text.Sentence(new_text, sentence.order, sentence.source, sentence.date)
+                new_sentence.group_id = sentence.group_id
+                compressed_sentences.append(new_sentence)
+                seen_sentences[new_sentence.original] = 1
+                #print "added [%s]" % new_text
     
     # get concepts
     relevant_sentences = []

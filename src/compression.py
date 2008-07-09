@@ -479,67 +479,128 @@ def get_bigrams_from_node(node, \
         return length, output
     return output
 
-class EquivalentNounPhraseMapper:
-    def getMappings(self, treenodes):
-        potential_mappings = {}
-        for root in treenodes:
-            # get all potential noun phrases
-            noun_phrases = root.getNodesByFilter(lambda x: x.label == "NP" and not x.hasChild("CC") and not x.hasChild("QP") and not x.hasChild("CD"))
-            for noun_phrase in noun_phrases:
-                head = noun_phrase.getNounPhraseHead()
-                noun_phrase.head_cache = head
+def generateNounPhraseMapping(treenodes):
+    potential_mappings = {}
+    for root in treenodes:
+        # get all potential noun phrases
+        noun_phrases = root.getNodesByFilter(lambda x: x.label == "NP" and not x.hasChild("CC") and not x.hasChild("QP") and not x.hasChild("CD"))
+        for noun_phrase in noun_phrases:
+            head = noun_phrase.getNounPhraseHead()
+            noun_phrase.head_cache = head
 
-            # restrict to minimal noun phrases (not having a parent with the same head)
-            noun_phrases = [x for x in noun_phrases if len(x.getParentsByFilter(lambda y: hasattr(y, "head_cache") and y.head_cache == x.head_cache)) == 0]
+        # restrict to minimal noun phrases (not having a parent with the same head)
+        noun_phrases = [x for x in noun_phrases if len(x.getParentsByFilter(lambda y: hasattr(y, "head_cache") and y.head_cache == x.head_cache)) == 0]
 
-            # fix heads with determiners and possessives to prevent ungrammatical mappings
-            for noun_phrase in noun_phrases:
-                head = noun_phrase.head_cache
-                noun_phrase.head_cache = head.text
-                parent_leaves = head.parent.leaves
-                if parent_leaves[-1].label == "POS":
-                    noun_phrase.head_cache += parent_leaves[-1].text
-                if parent_leaves[0].label in ("DT", "PRP$") :
-                    noun_phrase.head_cache = parent_leaves[0].text + " " + noun_phrase.head_cache
+        # fix heads with determiners and possessives to prevent ungrammatical mappings
+        for noun_phrase in noun_phrases:
+            head = noun_phrase.head_cache
+            noun_phrase.head_cache = head.text
+            parent_leaves = head.parent.leaves
+            if parent_leaves[-1].label == "POS":
+                noun_phrase.head_cache += parent_leaves[-1].text
+            if parent_leaves[0].label in ("DT", "PRP$") :
+                noun_phrase.head_cache = parent_leaves[0].text + " " + noun_phrase.head_cache
 
-            # count potential head-nounphrase relations
-            for noun_phrase in noun_phrases:
-                #noun_phrase.getText_cache = str(noun_phrase) #.getText()
-                noun_phrase.getText_cache = " ".join(str(leaf) for leaf in noun_phrase.leaves)
-                if noun_phrase.head_cache not in potential_mappings: potential_mappings[noun_phrase.head_cache] = {}
-                if noun_phrase.getText_cache not in potential_mappings[noun_phrase.head_cache]: potential_mappings[noun_phrase.head_cache][noun_phrase.getText_cache] = 0
-                potential_mappings[noun_phrase.head_cache][noun_phrase.getText_cache] += 1
+        # count potential head-nounphrase relations
+        for noun_phrase in noun_phrases:
+            #noun_phrase.getText_cache = str(noun_phrase) #.getText()
+            noun_phrase.getText_cache = " ".join(str(leaf) for leaf in noun_phrase.leaves)
+            if noun_phrase.head_cache not in potential_mappings: potential_mappings[noun_phrase.head_cache] = {}
+            if noun_phrase.getText_cache not in potential_mappings[noun_phrase.head_cache]: potential_mappings[noun_phrase.head_cache][noun_phrase.getText_cache] = 0
+            potential_mappings[noun_phrase.head_cache][noun_phrase.getText_cache] += 1
 
-        # remove unfrequent mappings
-        for head, list_of_np in potential_mappings.items():
-            for text, frequency in list_of_np.items():
-                if frequency < 2:
-                    del list_of_np[text]
-            if len(list_of_np) < 2:
-                del potential_mappings[head]
+    # remove unfrequent mappings
+    for head, list_of_np in potential_mappings.items():
+        for text, frequency in list_of_np.items():
+            if frequency < 2:
+                del list_of_np[text]
+        if len(list_of_np) < 2:
+            del potential_mappings[head]
 
-        # map each noun phrase to the smallest in the same class
-        final_mapping = {}
-        for head, list_of_np in potential_mappings.items():
-            for np in list_of_np:
-                min_length = sys.maxint
-                words = np.split()
-                mapping = np
-                for peer in list_of_np:
-                    if peer == np: continue
-                    peer_words = peer.split()
-                    skip = 0
-                    for word in peer_words:
-                        if word not in words:
-                            skip = 1
-                            break
-                    if not skip:
-                        if min_length > len(peer_words):
-                            mapping = peer
-                            min_length = len(peer_words)
-                if mapping != np:
-                    final_mapping[np] = mapping
-        return final_mapping
+    # map each noun phrase to the smallest in the same class
+    final_mapping = {}
+    for head, list_of_np in potential_mappings.items():
+        for np in list_of_np:
+            min_length = sys.maxint
+            words = np.split()
+            mapping = np
+            for peer in list_of_np:
+                if peer == np: continue
+                peer_words = peer.split()
+                skip = 0
+                for word in peer_words:
+                    if word not in words:
+                        skip = 1
+                        break
+                if not skip:
+                    if min_length > len(peer_words):
+                        mapping = peer
+                        min_length = len(peer_words)
+            if mapping != np:
+                final_mapping[np] = mapping
+    return final_mapping
+
+def min_backtrack(values):
+    argmin = 0
+    for i in range(len(values)):
+        if values[argmin] > values[i]:
+            argmin = i
+    return values[argmin], argmin
+
+def alignAcronym(sequence1, sequence2):
+    len1 = len(sequence1) + 1
+    len2 = len(sequence2) + 1
+    cost = [[0 for x in range(len2)] for y in range(len1)]
+    backtrack = [[0 for x in range(len2)] for y in range(len1)]
+    for i in range(len1):
+        cost[i][0] = i
+        backtrack[i][0] = 1
+    for i in range(len2):
+        cost[0][i] = i
+        backtrack[0][i] = 2
+    for i in range(1, len1):
+        for j in range(1, len2):
+            local_cost = 0
+            if sequence1[i - 1] != sequence2[j - 1][0]:
+                local_cost += 3
+            cost[i][j], backtrack[i][j] = min_backtrack((cost[i - 1][j - 1] + local_cost, cost[i - 1][j] + 1, cost[i][j - 1] + 1))
+    i = len1 - 1
+    j = len2 - 1
+    output = []
+    while i > 1 and j > 1:
+        if backtrack[i][j] == 0:
+            i -= 1
+            j -= 1
+        elif backtrack[i][j] == 1:
+            i -= 1
+        elif backtrack[i][j] == 2:
+            j -= 1
+    hypothesis = sequence2[j - 1:]
+    if j - 1 >= len(sequence2) or sequence2[j - 1][0] != sequence1[0] or i != 1 or len(hypothesis) < len1 - 1:
+        return None
+    return " ".join(hypothesis)
+
+def generateAcronymMapping(sentences):
+    output = {}
+    for sentence in sentences:
+        found = re.search(r'([^\)\(]+) *\( *([A-Z]+) *\)', sentence.original)
+        if found:
+            acronym = found.group(2)
+            words = found.group(1).strip().split()
+            filtered = []
+            while len(words) > 0:
+                word = words.pop()
+                if word in ("the", "The") and len(filtered) >= len(acronym):
+                    break
+                filtered.append(word)
+            filtered.reverse()
+            words = filtered
+            if len(words) > len(acronym) * 2:
+                words = words[len(words) - len(acronym) * 2:]
+            mapping = alignAcronym(acronym, words)
+            if mapping:
+                output[mapping] = acronym
+    return output
 
 if __name__ == "__main__":
     import sys
@@ -583,8 +644,7 @@ if __name__ == "__main__":
     # c<num> variables represent concepts in those selected pseudo-sentences
     program = SentenceSelectionILP(concept_weight, 100, use_subsentences = True, use_removables = True, use_min_length = True, use_min_length_ratio = False)
 
-    mapper = EquivalentNounPhraseMapper()
-    nounPhraseMapping = mapper.getMappings(roots)
+    nounPhraseMapping = generateNounPhraseMapping(roots)
     
     for root in roots:
         # generate a compression candidate tree (or a non compressed tree)
