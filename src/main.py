@@ -95,3 +95,8 @@ if __name__ == '__main__':
             for sentence in selection:
                 output_file.write(sentence.original + "\n")
             output_file.close()
+    ## evaluate
+    cmd = '%s %s %s' %(ROUGE_SCORER, task.manual_path, options.output)
+    eval = os.popen(cmd).read()
+    [rouge_1, rouge_2, rouge_su4] = re.findall(': (\d\.\d+)', eval)
+    print eval

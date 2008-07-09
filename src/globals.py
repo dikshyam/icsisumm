@@ -18,6 +18,7 @@ TOOLS_ROOT = ROOT + 'tools/'
 ILP_SUMMARIZER = TOOLS_ROOT + 'ilp/glpsol'
 GENETIC_SUMMARIZER = TOOLS_ROOT + 'genetic/greedy_concept_summarizer'
 BERKELEY_PARSER_CMD = '%s/parser_bin/distribute.sh %s/parser_bin/berkeleyParser+Postagger.sh' %(TOOLS_ROOT, TOOLS_ROOT)
+ROUGE_SCORER = '%s/evaluate_duc_qid_only.pl' %TOOLS_ROOT
 #############################################
 
 #############################################
