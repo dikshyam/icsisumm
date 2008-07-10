@@ -11,13 +11,14 @@ class SummaryProblem:
     self.narr         'Describe the activities of Morris Dees...'
     """
 
-    def __init__(self, id, title, narr, new_docs, old_docs):
+    def __init__(self, id, title, narr, new_docs, old_docs, old_problems = []):
         self.id = id
         self.title = title
         self.narr = narr
         self.query = text.Sentence(title+": "+ narr)
         self.new_docs_paths = new_docs[:]
         self.old_docs_paths = old_docs[:]
+        self.old_problems = old_problems
 
         ## variables that might get set later
         self.new_docs = None
@@ -35,9 +36,12 @@ class SummaryProblem:
             self.new_docs.append(doc)
             
         self.old_docs = []
-        for path in self.old_docs_paths:
-            doc = text.Document(path)
-            self.old_docs.append(doc)
+        for problem in self.old_problems:
+            if problem.new_docs == None:
+                sys.stderr.write('ERROR: in ' + self.id + ', could not find documents for old problem ' + problem.id + '\n')
+                sys.stderr.write('old_problems: ' + repr([x.id for x in self.old_problems]) + '\n')
+                sys.exit(1)
+            self.old_docs.extend(problem.new_docs)
 
     def _load_training(self, path, source='DUC'):
         """
@@ -66,6 +70,17 @@ class SummaryProblem:
     def get_new_sentences(self):
         #return [sent for sent in doc.sentences for doc in self.new_docs]
         sents = []
+        for doc in self.new_docs:
+            for sent in doc.sentences:
+                sents.append(sent)
+        return sents
+    
+    def get_new_and_old_sentences(self):
+        #return [sent for sent in doc.sentences for doc in self.new_docs]
+        sents = []
+        for doc in self.old_docs:
+            for sent in doc.sentences:
+                sents.append(sent)
         for doc in self.new_docs:
             for sent in doc.sentences:
                 sents.append(sent)
@@ -135,14 +150,16 @@ def setup_TAC08(task):
                 docset_ids.append(node.attrib["id"])
 
         old_docs = []
+        old_problems = []
         for docset_index in range(len(docsets)):
             
             ## map docids to documents
             new_docs = [all_docs[doc] for doc in docsets[docset_index]]
 
             ## create a SummaryProblem
-            problem = SummaryProblem(docset_ids[docset_index], title, narr, new_docs, old_docs)
+            problem = SummaryProblem(docset_ids[docset_index], title, narr, new_docs, old_docs, old_problems[:])
             old_docs += new_docs
+            old_problems.append(problem)
 
             ## include training data in problem
             if task.manual_path: problem._load_training(task.manual_path)
@@ -181,6 +198,7 @@ def setup_DUC_basic(task):
         docsets = [d.split() for d in docsets]
 
         old_docs = []
+        old_problems = []
         for docset_index in range(len(docsets)):
             
             ## update naming convention different from main
@@ -190,8 +208,9 @@ def setup_DUC_basic(task):
             new_docs = [all_docs[doc] for doc in docsets[docset_index]]
 
             ## create a SummaryProblem
-            problem = SummaryProblem(id+id_ext, title, narr, new_docs, old_docs)
+            problem = SummaryProblem(id+id_ext, title, narr, new_docs, old_docs, old_problems[:])
             old_docs += new_docs
+            old_problems.append(problem)
 
             ## include training data in problem
             if task.manual_path: problem._load_training(task.manual_path)
@@ -311,13 +330,13 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
     if not sentences:
         sentences = problem.get_new_sentences()
 
-    for sentence in sentences:
+    for sentence in problem.get_new_and_old_sentences():
         if not hasattr(sentence, "compression_node"):
             sentence.compression_node = compression.TreebankNode(sentence.parsed)
 
-    nounPhraseMapping = compression.generateNounPhraseMapping([s.compression_node for s in sentences])
+    nounPhraseMapping = compression.generateNounPhraseMapping([s.compression_node for s in problem.get_new_and_old_sentences()])
     #print "generating acronyms"
-    acronymMapping = compression.generateAcronymMapping(problem.get_new_sentences())
+    acronymMapping = compression.generateAcronymMapping(problem.get_new_and_old_sentences())
     print problem.id, acronymMapping
     
     compressed_sentences = []
@@ -327,7 +346,7 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         subsentences = sentence.compression_node.getNodesByFilter(compression.TreebankNode.isSubsentence)
         candidates = {}
         for node in subsentences:
-            candidates.update(node.getCandidates(mapping=nounPhraseMapping))
+            candidates.update(node.getCandidates(mapping=nounPhraseMapping, use_mandatory_removals=False))
         if longuest_candidate_only:
             max_length = 0
             argmax = None
@@ -369,7 +388,7 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
     for sentence in compressed_sentences:
         units = util.get_ngrams(sentence.stemmed, n=2, bounds=False)
         overlapping = set([u for u in units if u in concept_weight])
-        if len(overlapping) == 0: continue
+        if len(overlapping) == 0: continue # get rid of sentences that do not overlap with concepts
         relevant_sentences.append(sentence)
         sentence_concepts.append(overlapping)
         used_concepts.update(overlapping)
@@ -418,9 +437,11 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         s2 = ' - c%d >= 0' %index                    
         program.constraints["presence_%d" % index] = s1 + s2
         ## if a bigram is not selected then all sentences containing it are deselected
-        s1 = ' + '.join([ 's%d' %sent_index for sent_index in curr_concept_sents[index]])
-        s2 = '- %d c%d <= 0' %(len(curr_concept_sents[index]), index)
-        program.constraints["absence_%d" % index] = s1 + s2
+        #### this constraint is disabled since it is not necessary when all sentences contain at least one concept
+        #### it might also be the reason for singlar matrices that crash the solver
+        #s1 = ' + '.join([ 's%d' %sent_index for sent_index in curr_concept_sents[index]])
+        #s2 = ' - %d c%d <= 0' %(len(curr_concept_sents[index]), index)
+        #program.constraints["absence_%d" % index] = s1 + s2
 
     # constraints so that acronyms get selected along with sentences they belong to
     for acronym, index in acronym_index.items():
@@ -428,12 +449,13 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         s2 = ' - a%d >= 0' %acronym_id[acronym]                    
         program.constraints["acronym_presence_%d" % acronym_id[acronym]] = s1 + s2
         s1 = ' + '.join([ 's%d' %sent_index for sent_index in index])
-        s2 = '- %d a%d <= 0' %(len(index), acronym_id[acronym])
+        s2 = ' - %d a%d <= 0' %(len(index), acronym_id[acronym])
         program.constraints["acronym_absence_%d" % acronym_id[acronym]] = s1 + s2
 
     # add sentence compression groups
     for group in groups:
-        program.constraints["group_%d" % group] = " + ".join(["s%d" % sent_index for sent_index in groups[group]]) + " <= 1"
+        if len(groups[group]) > 1:
+            program.constraints["group_%d" % group] = " + ".join(["s%d" % sent_index for sent_index in groups[group]]) + " <= 1"
 
     for sent_index in range(len(relevant_sentences)):
         program.binary["s%d" % sent_index] = relevant_sentences[sent_index]

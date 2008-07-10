@@ -59,6 +59,7 @@ if __name__ == '__main__':
     if options.compress:
         ## sentence compression
         for problem in task.problems:
+            #if problem.id != 'D0711-B': continue
             sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))
             mapper = concept_mapper.HeuristicMapperExp(problem, "n2", None)
             mapper.map_concepts()
@@ -75,6 +76,9 @@ if __name__ == '__main__':
             for variable in program.output:
                 if re.match(r'^s\d+$', variable) and program.output[variable] == 1:
                     selection.append(program.binary[variable])
+            if len(selection) == 0:
+                sys.stderr.write('ERROR: empty summary, check the output of the solver\n')
+                sys.exit(1)
             selection = ordering.by_date(selection)
             summary = "\n".join(sentence.original for sentence in selection)
             summary = compression.addAcronymDefinitionsToSummary(summary, program.acronyms)

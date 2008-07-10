@@ -4,8 +4,10 @@ change the ROOT to your installation directory
 """
 
 #############################################
-ROOT = '/u/dgillick/workspace/summ/'
-ROOT = '/u/favre/work/summarization/systems/icsi_tac08/summ_2008-06-24/'
+#ROOT = '/u/dgillick/workspace/summ/'
+#ROOT = '/u/favre/work/summarization/systems/icsi_tac08/summ_2008-06-24/'
+import os.path, sys
+ROOT = os.path.dirname(sys.argv[0]) + "/../"
 #############################################
 
 #############################################

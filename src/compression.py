@@ -55,6 +55,7 @@ class TreebankNode (TreeNode):
                 return False
             if len(children) == 1:
                 self.reason = 8
+                self.mandatory_removal = True
                 return True
         if self.isDayNounPhrase() and self.parent.label not in ("PP", "ADVP"):
             parentDays = self.parent.getNodesByFilter(self.__class__.isDayNounPhrase)
@@ -74,6 +75,7 @@ class TreebankNode (TreeNode):
             #if len(date_leaves) > 0:
             #    return False
             self.reason = 10
+            self.mandatory_removal = True
             return True
 
         if self.parent.label == "VP":
@@ -89,6 +91,7 @@ class TreebankNode (TreeNode):
         #    return False
         if self.label == "PRN": # ()
             self.reason = 5
+            self.mandatory_removal = True
             return True    
 # adverbs
         #if self.label == "RB" and self.text not in ("not", "n't"):
@@ -99,9 +102,6 @@ class TreebankNode (TreeNode):
                 self.reason = 6
                 return False
             if self.nextSlibling != None and self.nextSlibling.label == "," and self.previousSlibling != None and self.previousSlibling.label == ",":
-                if self.label in "PP":
-                    #return False
-                    pass
                 self.reason = 7
                 return True
         if self.label == "SBAR": # and self.parent.label != "VP":
@@ -132,6 +132,7 @@ class TreebankNode (TreeNode):
                 return False
             if self.root.firstNonPunctuationLeaf() == self.leaves[0] or self.root.lastNonPunctuationLeaf() == self.leaves[-1]:
                 self.reason = 23
+                self.mandatory_removal = True
                 return True
         return False
 
@@ -152,12 +153,14 @@ class TreebankNode (TreeNode):
             return False
         return True
 
-    def getCandidates(self, beam = 0, mapping = None):
+    def getCandidates(self, beam = 0, mapping = None, use_mandatory_removals=True):
+        if use_mandatory_removals and self.isRemovable() and hasattr(self, "mandatory_removal") and self.mandatory_removal:
+            return {}
         output = {"":0}
         if self.text != "":
             output = {" %s" % self.text:1}
         for child in self.children:
-            child_output = child.getCandidates(beam, mapping)
+            child_output = child.getCandidates(beam, mapping, use_mandatory_removals)
             new_output = {}
             for i in output.keys():
                 for j in child_output.keys():
@@ -554,6 +557,7 @@ def min_backtrack(values):
 def alignAcronym(sequence1, sequence2):
     len1 = len(sequence1) + 1
     len2 = len(sequence2) + 1
+    if len1 <= 2 or len2 <= 2: return None
     cost = [[0 for x in range(len2)] for y in range(len1)]
     backtrack = [[0 for x in range(len2)] for y in range(len1)]
     for i in range(len1):
@@ -610,6 +614,7 @@ def replaceAcronyms(sentences, mapping):
     for sentence in sentences:
         text = sentence.original
         for definition, acronym in mapping.items():
+            definition = re.sub(r'[^A-Za-z]+', '[^A-Za-z]+', definition)
             text = re.sub(r'\b' + definition + r'(\s*(\(' + acronym + r'\))|\b)', acronym, text)
         if text != sentence.original:
             sentence.set_text(text)

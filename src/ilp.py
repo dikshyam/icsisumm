@@ -48,7 +48,12 @@ class IntegerLinearProgram:
         if self.debug:
             os.system("%s --tmlim %d --cpxlp %s.ilp -o %s.sol >&2" % (self.command, self.time_limit, self.tmp, self.tmp))
         else:
-            os.popen("%s --tmlim %d --cpxlp %s.ilp -o %s.sol" % (self.command, self.time_limit, self.tmp, self.tmp))
+            output = os.popen("%s --tmlim %d --cpxlp %s.ilp -o %s.sol" % (self.command, self.time_limit, self.tmp, self.tmp))
+            text = "".join(output.readlines())
+            if output.close():
+                sys.stderr.write("ERROR: glpsol failed\n")
+                sys.stderr.write(text)
+                sys.exit(1)
 
         self.get_solution()
 
