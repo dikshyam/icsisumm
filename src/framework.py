@@ -346,7 +346,7 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         subsentences = sentence.compression_node.getNodesByFilter(compression.TreebankNode.isSubsentence)
         candidates = {}
         for node in subsentences:
-            candidates.update(node.getCandidates(mapping=nounPhraseMapping, use_mandatory_removals=False))
+            candidates.update(node.getCandidates(mapping=nounPhraseMapping, use_mandatory_removals=True))
         if longuest_candidate_only:
             max_length = 0
             argmax = None
@@ -365,10 +365,10 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         group_id += 1
 
     compression.replaceAcronyms(compressed_sentences, acronymMapping)
-    log_file = open("%s.log" % problem.id, "w")
-    for sentence in compressed_sentences:
-        log_file.write("%d %s\n" %( group_id, str(sentence)))
-    log_file.close()
+    #log_file = open("%s.log" % problem.id, "w")
+    #for sentence in compressed_sentences:
+    #    log_file.write("%d %s\n" %( group_id, str(sentence)))
+    #log_file.close()
 
     # generate ids for acronyms
     acronym_id = {}

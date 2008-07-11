@@ -47,6 +47,16 @@ class TreebankNode (TreeNode):
         if self.parent.hasChild("CC"):
             self.reason = 2
             return False
+        if self.label == "NP":
+            text = " ".join(x.text for x in self.leaves)
+            if re.match(r'^(((last|next|this) )?((Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day|afternoon|morning|evening|night)|tomorrow|yesterday)$', text, re.I):
+                self.mandatory_removal = True
+                return True
+        if self.label == "PP":
+            text = " ".join(x.text for x in self.leaves)
+            if re.match(r'^on (Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day$', text, re.I):
+                self.mandatory_removal = True
+                return True
         if self.label in ("PP", "ADVP"):
             children = self.getChildrenByFilter(self.__class__.isDayNounPhrase)
             parentDays = self.parent.getNodesByFilter(self.__class__.isDayNounPhrase)
@@ -55,7 +65,7 @@ class TreebankNode (TreeNode):
                 return False
             if len(children) == 1:
                 self.reason = 8
-                self.mandatory_removal = True
+                #self.mandatory_removal = True
                 return True
         if self.isDayNounPhrase() and self.parent.label not in ("PP", "ADVP"):
             parentDays = self.parent.getNodesByFilter(self.__class__.isDayNounPhrase)
@@ -75,7 +85,7 @@ class TreebankNode (TreeNode):
             #if len(date_leaves) > 0:
             #    return False
             self.reason = 10
-            self.mandatory_removal = True
+            #self.mandatory_removal = True
             return True
 
         if self.parent.label == "VP":
@@ -105,6 +115,9 @@ class TreebankNode (TreeNode):
                 self.reason = 7
                 return True
         if self.label == "SBAR": # and self.parent.label != "VP":
+            if self.leaves[0].text == "that":
+                self.reason = 15
+                return False
             # prevent "He said (+R on Thursday) (+R that he is going to ...)"
             if self.previousSlibling != None and self.previousSlibling.isRemovable():
                 self.reason = 14
@@ -116,6 +129,10 @@ class TreebankNode (TreeNode):
             # would break comparatives "it was longer *than* when he went home"
             if self.leaves[0].text == "than":
                 self.reason = 12
+                return False
+            # "he is such a small person that he ..."
+            if self.leaves[0].text == "that" and self.parent.hasLeaf(lambda x: x.text in ("such", "so") and not x.hasParent(self)):
+                self.reason = 31
                 return False
             # hack: prevent errors like "... advice on (+R where to go)"
             if self.leaves[0].previousLeaf != None and self.leaves[0].previousLeaf.label == "IN":
@@ -620,8 +637,12 @@ def replaceAcronyms(sentences, mapping):
             sentence.set_text(text)
 
 def addAcronymDefinitionsToSummary(summary, mapping):
+    seen = {} 
     for definition, acronym in mapping.items():
-        summary = re.sub(r'\b' + acronym + r'([^A-Za-z0-9\'-])', definition + ' (' + acronym + r')\1', summary, 1)
+        if acronym in seen: continue # the acronym might be mapped twice with different writings...
+        summary = re.sub(r'\b' + acronym + r'([^A-Za-z0-9-])', definition + ' (' + acronym + r')\1', summary, 1)
+        seen[acronym] = 1
+    summary = re.sub(r'( +\([^\)]+\))\'s ', r'\'s\1', summary)
     return summary
 
 if __name__ == "__main__":
@@ -633,10 +654,10 @@ if __name__ == "__main__":
         candidates = TreebankNode(root.getCandidateTree())
         #leaves = [leaf for leaf in root.leaves if re.match(r'[a-zA-Z]', leaf.label)]
         #if len(leaves) == 0 or not (leaves[0].hasParent('ADVP')): continue
-        #text = root.getTabbedRepresentation()
         #print root.getText()
         #print text
         print candidates.getPrettyCandidates()
+        print root.getTabbedRepresentation()
         print
     sys.exit(0)
 

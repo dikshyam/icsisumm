@@ -59,7 +59,7 @@ if __name__ == '__main__':
     if options.compress:
         ## sentence compression
         for problem in task.problems:
-            #if problem.id != 'D0711-B': continue
+            #if problem.id != 'D0704': continue
             sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))
             mapper = concept_mapper.HeuristicMapperExp(problem, "n2", None)
             mapper.map_concepts()
@@ -85,6 +85,11 @@ if __name__ == '__main__':
             output_file = open("%s/%s" % (options.output, problem.id), "w")
             output_file.write(summary)
             output_file.close()
+
+            # allow memory cleanup
+            problem.old_problems = []
+            problem.old_docs = []
+            problem.new_docs = []
     else:    
         ## no sentence compression
         for problem in task.problems:
@@ -100,7 +105,8 @@ if __name__ == '__main__':
                 output_file.write(sentence.original + "\n")
             output_file.close()
     ## evaluate
-    cmd = '%s %s %s' %(ROUGE_SCORER, task.manual_path, options.output)
-    eval = os.popen(cmd).read()
-    [rouge_1, rouge_2, rouge_su4] = re.findall(': (\d\.\d+)', eval)
-    print eval
+    if options.task != 'u08':
+        cmd = '%s %s %s' %(ROUGE_SCORER, task.manual_path, options.output)
+        eval = os.popen(cmd).read()
+        [rouge_1, rouge_2, rouge_su4] = re.findall(': (\d\.\d+)', eval)
+        print eval
