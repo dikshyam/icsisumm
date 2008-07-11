@@ -326,7 +326,7 @@ def get_program_result(program):
                 #print node.root.getPrettyCandidates()
     return selection           
 
-def build_alternative_program(problem, concept_weight, length=100, sentences = None, longuest_candidate_only=False):
+def build_alternative_program(problem, concept_weight, length=100, sentences = None, longuest_candidate_only=False, providedAcronyms=None):
     if not sentences:
         sentences = problem.get_new_sentences()
 
@@ -336,7 +336,11 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
 
     nounPhraseMapping = compression.generateNounPhraseMapping([s.compression_node for s in problem.get_new_and_old_sentences()])
     #print "generating acronyms"
-    acronymMapping = compression.generateAcronymMapping(problem.get_new_and_old_sentences())
+    acronymMapping = None
+    if providedAcronyms:
+        acronymMapping = providedAcronyms
+    else:
+        acronymMapping = compression.generateAcronymMapping(problem.get_new_and_old_sentences())
     print problem.id, acronymMapping
     
     compressed_sentences = []
@@ -467,3 +471,10 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
     sys.stderr.write("compression candidates: %d, original: %d\n" % (len(relevant_sentences), len(sentences)))
     program.acronyms = acronymMapping
     return program
+
+
+def removeAcronymsFromProblem(problem):
+    acronymMapping = compression.generateAcronymMapping(problem.get_new_and_old_sentences())
+    # this will modify the sentences, but keep parse trees
+    compression.replaceAcronyms(problem.get_new_sentences(), acronymMapping)
+    return acronymMapping

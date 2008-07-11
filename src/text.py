@@ -8,6 +8,7 @@ class TextProcessor:
     def __init__(self):
         self._no_punct_pattern = re.compile('[a-zA-Z0-9- ]')
         self._stopwords = set(open(STOPWORDS).read().splitlines())
+        self._stopwords.add('said')
         self._porter_stemmer = nltk.stem.porter.PorterStemmer()
         self._sent_tokenizer = util.load_pickle('%s%s' %(STATIC_DATA_ROOT, 'punkt/english.pickle'))
         self._sent_split_ABBR_LIST = set(['Mr.', 'Mrs.', 'Sen.', 'No.', 'Dr.', 'Gen.', 'St.', 'Lt.', 'Col.'])
@@ -88,13 +89,14 @@ class Sentence:
         self.date = date
         self.source = source
         self.set_text(text)
+        self.parsed = None
 
     def set_text(self, text):
         self.original = text.strip()
-        self.parsed = None
         self.length = len(self.original.split())
         self.tokens = text_processor.tokenize(text_processor.remove_punct(self.original.lower()))
         self.stemmed = map(text_processor.porter_stem, self.tokens)
+        #self.stemmed = map(text_processor.porter_stem, text_processor.remove_stopwords(self.tokens))
         self.no_stop = map(text_processor.porter_stem, text_processor.remove_stopwords(self.tokens))
         
     def parse(self, parser=None):

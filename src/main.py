@@ -61,13 +61,14 @@ if __name__ == '__main__':
         for problem in task.problems:
             #if problem.id != 'D0704': continue
             sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))
+            acronyms = framework.removeAcronymsFromProblem(problem)
             mapper = concept_mapper.HeuristicMapperExp(problem, "n2", None)
             mapper.map_concepts()
             mapper.choose_sents()
             concept_weight = mapper.concept_weight_sets[0]
-            #print concept_weight
+            #print concept_weight.keys()
             #program = framework.build_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
-            program = framework.build_alternative_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0], longuest_candidate_only=False)
+            program = framework.build_alternative_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0], longuest_candidate_only=False) , providedAcronyms=acronyms)
             # run the program and get the output
             program.debug = 0
             program.run()
