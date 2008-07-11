@@ -51,6 +51,11 @@ if __name__ == '__main__':
         parser = berkeleyparser.CommandLineParser(BERKELEY_PARSER_CMD)
     framework.setup_DUC_sentences(task, parser, reload=options.reload)
 
+    #for problem in task.problems:
+    #    for sentence in problem.get_new_sentences():
+    #        print sentence.parsed
+    #sys.exit(0)
+
     ## create output directory
     try: os.popen('rm -rf %s' %options.output)
     except: pass
@@ -59,6 +64,11 @@ if __name__ == '__main__':
     if options.compress:
         ## sentence compression
         for problem in task.problems:
+            # update stemming
+            for sentence in problem.get_new_sentences():
+                sentence.set_text(sentence.original)
+            problem.query.set_text(problem.query.original)
+
             #if problem.id != 'D0704': continue
             sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))
             acronyms = framework.removeAcronymsFromProblem(problem)
@@ -68,7 +78,7 @@ if __name__ == '__main__':
             concept_weight = mapper.concept_weight_sets[0]
             #print concept_weight.keys()
             #program = framework.build_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0])
-            program = framework.build_alternative_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0], longuest_candidate_only=False) , providedAcronyms=acronyms)
+            program = framework.build_alternative_program(problem, concept_weight, length=task.length_limit, sentences=mapper.relevant_sent_sets[0], longuest_candidate_only=False, providedAcronyms=acronyms)
             # run the program and get the output
             program.debug = 0
             program.run()
@@ -80,9 +90,11 @@ if __name__ == '__main__':
             if len(selection) == 0:
                 sys.stderr.write('ERROR: empty summary, check the output of the solver\n')
                 sys.exit(1)
-            selection = ordering.by_date(selection)
+            #selection = ordering.by_date(selection)
+            selection = ordering.by_dendrogram(selection, concept_weight, problem)
             summary = "\n".join(sentence.original for sentence in selection)
             summary = compression.addAcronymDefinitionsToSummary(summary, program.acronyms)
+            #print summary
             output_file = open("%s/%s" % (options.output, problem.id), "w")
             output_file.write(summary)
             output_file.close()
@@ -94,6 +106,9 @@ if __name__ == '__main__':
     else:    
         ## no sentence compression
         for problem in task.problems:
+            for sentence in problem.get_new_sentences():
+                sentence.set_text(sentence.original)
+            problem.query.set_text(problem.query.original)
             sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))
             mapper = concept_mapper.HeuristicMapperExp(problem, "n2", None)
             #mapper = concept_mapper.CheatingMapper(problem, "n2", None)

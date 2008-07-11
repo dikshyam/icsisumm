@@ -49,7 +49,7 @@ class TreebankNode (TreeNode):
             return False
         if self.label == "NP":
             text = " ".join(x.text for x in self.leaves)
-            if re.match(r'^(((last|next|this) )?((Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day|afternoon|morning|evening|night)|tomorrow|yesterday)$', text, re.I):
+            if re.match(r'^(((last|next|this) )?((Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day|afternoon|morning|evening|night)|today|tomorrow|yesterday)$', text, re.I):
                 self.mandatory_removal = True
                 return True
         if self.label == "PP":
@@ -101,7 +101,7 @@ class TreebankNode (TreeNode):
         #    return False
         if self.label == "PRN": # ()
             self.reason = 5
-            self.mandatory_removal = True
+            #self.mandatory_removal = True
             return True    
 # adverbs
         #if self.label == "RB" and self.text not in ("not", "n't"):
@@ -115,9 +115,11 @@ class TreebankNode (TreeNode):
                 self.reason = 7
                 return True
         if self.label == "SBAR": # and self.parent.label != "VP":
-            if self.leaves[0].text == "that":
-                self.reason = 15
-                return False
+            if self.leaves[0].text == "that": # that after a verb might be the object
+                verb = filter(lambda x: re.match(r'^V', x.label), self.parent.children[0:self.index])
+                if len(verb) > 0:
+                    self.reason = 15
+                    return False
             # prevent "He said (+R on Thursday) (+R that he is going to ...)"
             if self.previousSlibling != None and self.previousSlibling.isRemovable():
                 self.reason = 14
@@ -141,6 +143,9 @@ class TreebankNode (TreeNode):
             if self.leaves[-1].nextLeaf != None and self.leaves[-1].nextLeaf.label == "IN":
                 self.reason = 4
                 return False
+            if self.leaves[0].previousLeaf != None and re.match(r'^(those|most|many|few|some)$', self.leaves[0].label, re.I):
+                self.reason = 41
+                return False
             self.reason = 13
             return True
         if self.label == "ADVP" and self.hasChild("RB") and not self.hasParent("ADVP"):
@@ -151,6 +156,15 @@ class TreebankNode (TreeNode):
                 self.reason = 23
                 self.mandatory_removal = True
                 return True
+        if self.label == 'PP':
+            if self.previousLeaf != None and self.previousLeaf.label == "IN":
+                reason = 83
+                return False
+            previous = filter(lambda x: re.match(r'^(N|PP)', x.label), self.parent.children[0:self.index])
+            if len(previous) > 0 and self.previousLeaf.label != 'DT':
+                reason = 82
+                return True
+
         return False
 
     def isSubsentence(self):
@@ -268,6 +282,16 @@ class TreebankNode (TreeNode):
         if len(self.children) == 0 or self.parent == None:
             output = output + " " + self.text
         output = output + ")"
+        return output
+
+    def getMinimalCandidate(self):
+        if self.isRemovable():
+            return ""
+        output = ""
+        if self.isLeaf():
+            output = " " + self.text
+        for child in self.children:
+            output += child.getMinimalCandidate()
         return output
 
     def getTabbedRepresentation(self, tabs = "", firstChild = True):
@@ -647,18 +671,17 @@ def addAcronymDefinitionsToSummary(summary, mapping):
 
 if __name__ == "__main__":
     import sys
+    id = 1
     for line in sys.stdin.readlines():
         root = TreebankNode(line.strip())
-        #nodes = root.getNodesByFilter(TreebankNode.isDayNounPhrase)
-        #if len(nodes) == 0: continue
+        subsentences = root.getNodesByFilter(TreebankNode.isSubsentence)
+        for node in subsentences:
+            print id, postProcess(node.getMinimalCandidate())
         candidates = TreebankNode(root.getCandidateTree())
-        #leaves = [leaf for leaf in root.leaves if re.match(r'[a-zA-Z]', leaf.label)]
-        #if len(leaves) == 0 or not (leaves[0].hasParent('ADVP')): continue
-        #print root.getText()
-        #print text
-        print candidates.getPrettyCandidates()
+        print id, candidates.getPrettyCandidates()
         print root.getTabbedRepresentation()
         print
+        id += 1
     sys.exit(0)
 
 if __name__ == "__main__":

@@ -61,6 +61,8 @@ class TextProcessor:
         return nltk.tokenize.punkt_word_tokenize(text)
 
     def porter_stem(self, word):
+        if len(word) < 3 or word in self._stopwords:
+            return word
         return self._porter_stemmer.stem(word)
     
     def remove_stopwords(self, words):
