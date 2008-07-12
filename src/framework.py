@@ -350,7 +350,7 @@ def build_alternative_program(problem, concept_weight, length=100, sentences = N
         subsentences = sentence.compression_node.getNodesByFilter(compression.TreebankNode.isSubsentence)
         candidates = {}
         for node in subsentences:
-            candidates.update(node.getCandidates(mapping=nounPhraseMapping, use_mandatory_removals=True))
+            candidates.update(node.getCandidates(beam=100, mapping=nounPhraseMapping, use_mandatory_removals=True))
         if longuest_candidate_only:
             max_length = 0
             argmax = None

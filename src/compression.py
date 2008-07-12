@@ -40,23 +40,45 @@ class TreebankNode (TreeNode):
             return True
         return False
 
-    def isRemovable(self):
-        if self.parent == None:
-            self.reason = 1
-            return False
-        if self.parent.hasChild("CC"):
-            self.reason = 2
-            return False
-        if self.label == "NP":
+    def isMandatoryRemoval(self):
+        if self.label == "NP" and not self.hasParent("PP"):
             text = " ".join(x.text for x in self.leaves)
-            if re.match(r'^(((last|next|this) )?((Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day|afternoon|morning|evening|night)|today|tomorrow|yesterday)$', text, re.I):
-                self.mandatory_removal = True
+            if re.match(r'^(((last|next|this|today|tomorrow|yesterday) )?((Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day|afternoon|morning|evening|night))$', text, re.I):
                 return True
         if self.label == "PP":
             text = " ".join(x.text for x in self.leaves)
             if re.match(r'^on (Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day$', text, re.I):
-                self.mandatory_removal = True
                 return True
+        if self.label == "ADVP" and len(self.children) == 1:
+            if re.match(r'ly$', self.leaves[0].text):
+                return True
+            text = " ".join(x.text for x in self.leaves)
+            if re.match(r'\b(However|Hence|Indeed|Now|Otherwise|Then|Still|Nonetheless|nevertheless|Therefore|Again|There|Later|Well|Also|Instead|Meanwhile|Overall|Already|Alike|Sometimes|Soon|Perhaps|next|Further|Furthermore|Yet|Rather|Regardless|Even|Afterward|After|First|Second|Thrid|Thereafter|Anyway|So|Altogether|Alone|Likewise|Either|Nevertheless|Moreover|Overnight|Thus|So Far|And|Besides|By the way|Henceforth|Although|Despite|Notwithstanding)\b', text, re.I):
+# Never|Hardly
+                return True
+        if self.label == "NNP" and self.text in ("Inc.", "Ltd."):
+            return True
+        # remove But, And, Or in sentence start
+        if self.root.firstNonPunctuationLeaf() == self and self.label == "CC":
+            return True
+
+    def isRemovable(self):
+        # don't remove the root
+        if self.parent == None:
+            self.reason = 1
+            return False
+
+        # prevent breaking conjonctive and disjonctives
+        if self.parent.hasChild("CC"):
+            self.reason = 2
+            return False
+
+        # some expressions are removed definitively
+        if self.isMandatoryRemoval():
+            self.mandatory_removal = True
+            return True
+
+        # temporal phrases can be removed unless they are specific (Jan. 1 1999, 12pm)
         if self.label in ("PP", "ADVP"):
             children = self.getChildrenByFilter(self.__class__.isDayNounPhrase)
             parentDays = self.parent.getNodesByFilter(self.__class__.isDayNounPhrase)
@@ -65,7 +87,6 @@ class TreebankNode (TreeNode):
                 return False
             if len(children) == 1:
                 self.reason = 8
-                #self.mandatory_removal = True
                 return True
         if self.isDayNounPhrase() and self.parent.label not in ("PP", "ADVP"):
             parentDays = self.parent.getNodesByFilter(self.__class__.isDayNounPhrase)
@@ -75,19 +96,10 @@ class TreebankNode (TreeNode):
             if self.hasChild("POS") or self.hasChild("CD") or self.hasChild("QP"):
                 self.reason = 9
                 return False
-            # this might be the object of the verb
-            #if self.index == len(self.parent.children) - 1 and self.previousSlibling != None \
-            #    and self.previousSlibling.label in ("VP", "VB", "VBD", "VBG", "VBN", "VBP", "VBZ"):
-            #    return False
-
-            # the date might be part of more accurate date
-            #date_leaves = self.parent.getNodesByFilter(lambda x: x.text in ("p.m.", "p.m", "a.m.", "a.m"))
-            #if len(date_leaves) > 0:
-            #    return False
             self.reason = 10
-            #self.mandatory_removal = True
             return True
 
+        # don't remove things before the verb in a verbal phrase
         if self.parent.label == "VP":
             verb_children = self.parent.getChildrenByFilter(lambda x: re.match(r'^(V|MD)', x.label))
             if len(verb_children) == 0:
@@ -97,24 +109,25 @@ class TreebankNode (TreeNode):
                 self.reason = 22
                 return False
 
-        #if self.previousSlibling != None and self.previousSlibling.leaves[-1].label == "CC":
-        #    return False
-        if self.label == "PRN": # ()
+        # parentheses and a few appositives are removable
+        if self.label == "PRN":
             self.reason = 5
-            #self.mandatory_removal = True
             return True    
-# adverbs
-        #if self.label == "RB" and self.text not in ("not", "n't"):
-        #    return True
-        if self.label in ("NP", "PP") and self.parent.label == "NP": # comma enclosed appositives
+
+        # comma enclosed appositives
+        if self.label in ("NP", "PP") and self.parent.label == "NP":
             num_commas = len(self.parent.getChildrenByLabel(","))
+            # more than 2 commas: might be a list
             if num_commas > 0 and num_commas != 2:
                 self.reason = 6
                 return False
+            # verify comma enclosure
             if self.nextSlibling != None and self.nextSlibling.label == "," and self.previousSlibling != None and self.previousSlibling.label == ",":
                 self.reason = 7
                 return True
-        if self.label == "SBAR": # and self.parent.label != "VP":
+
+        # try to remove subordinate clauses
+        if self.label == "SBAR":
             if self.leaves[0].text == "that": # that after a verb might be the object
                 verb = filter(lambda x: re.match(r'^V', x.label), self.parent.children[0:self.index])
                 if len(verb) > 0:
@@ -143,23 +156,31 @@ class TreebankNode (TreeNode):
             if self.leaves[-1].nextLeaf != None and self.leaves[-1].nextLeaf.label == "IN":
                 self.reason = 4
                 return False
-            if self.leaves[0].previousLeaf != None and re.match(r'^(those|most|many|few|some)$', self.leaves[0].label, re.I):
+            # the SBAR might be specifing a quantifier
+            if self.leaves[0].previousLeaf != None and re.match(r'^(those|most|many|few|some)$', self.leaves[0].previousLeaf.text, re.I):
                 self.reason = 41
                 return False
             self.reason = 13
             return True
+
+        # try to remove adverbial phrases (the parser seems to do a lot of errors regarding those)
         if self.label == "ADVP" and self.hasChild("RB") and not self.hasParent("ADVP"):
+            # the phrase could be subject of a verb
             if len(self.parent.children) < 3:
                 self.reason = 24
                 return False
+            # the adverbial phrase is anchored at the begining or the end of the sentence
             if self.root.firstNonPunctuationLeaf() == self.leaves[0] or self.root.lastNonPunctuationLeaf() == self.leaves[-1]:
                 self.reason = 23
-                self.mandatory_removal = True
                 return True
+
+        # try to remove prepositional phrases
         if self.label == 'PP':
+            # don't break double prepositions
             if self.previousLeaf != None and self.previousLeaf.label == "IN":
                 reason = 83
                 return False
+            # 
             previous = filter(lambda x: re.match(r'^(N|PP)', x.label), self.parent.children[0:self.index])
             if len(previous) > 0 and self.previousLeaf.label != 'DT':
                 reason = 82
@@ -282,6 +303,21 @@ class TreebankNode (TreeNode):
         if len(self.children) == 0 or self.parent == None:
             output = output + " " + self.text
         output = output + ")"
+        return output
+
+    def getMandatoryRemovalCandidate(self):
+        output = ""
+        if self.isRemovable():
+            if hasattr(self, "mandatory_removal") and self.mandatory_removal:
+                output = " (+M"
+            else:
+                output += " (+R"
+        if self.isLeaf():
+            output = " " + self.text
+        for child in self.children:
+            output += child.getMandatoryRemovalCandidate()
+        if self.isRemovable():
+            output += ")"
         return output
 
     def getMinimalCandidate(self):
@@ -666,7 +702,7 @@ def addAcronymDefinitionsToSummary(summary, mapping):
         if acronym in seen: continue # the acronym might be mapped twice with different writings...
         summary = re.sub(r'\b' + acronym + r'([^A-Za-z0-9-])', definition + ' (' + acronym + r')\1', summary, 1)
         seen[acronym] = 1
-    summary = re.sub(r'( +\([^\)]+\))\'s ', r'\'s\1', summary)
+    summary = re.sub(r'( +\([^\)]+\))\'s ', r"'s\1 ", summary)
     return summary
 
 if __name__ == "__main__":
@@ -674,13 +710,14 @@ if __name__ == "__main__":
     id = 1
     for line in sys.stdin.readlines():
         root = TreebankNode(line.strip())
-        subsentences = root.getNodesByFilter(TreebankNode.isSubsentence)
-        for node in subsentences:
-            print id, postProcess(node.getMinimalCandidate())
-        candidates = TreebankNode(root.getCandidateTree())
-        print id, candidates.getPrettyCandidates()
-        print root.getTabbedRepresentation()
-        print
+        #subsentences = root.getNodesByFilter(TreebankNode.isSubsentence)
+        #for node in subsentences:
+        #    print id, postProcess(node.getMinimalCandidate())
+        print root.getMandatoryRemovalCandidate()
+        #candidates = TreebankNode(root.getCandidateTree())
+        #print id, candidates.getPrettyCandidates()
+        #print root.getTabbedRepresentation()
+        #print
         id += 1
     sys.exit(0)
 

@@ -64,6 +64,7 @@ if __name__ == '__main__':
     if options.compress:
         ## sentence compression
         for problem in task.problems:
+            #if problem.id != 'D0716-A': continue
             # update stemming
             for sentence in problem.get_new_sentences():
                 sentence.set_text(sentence.original)
