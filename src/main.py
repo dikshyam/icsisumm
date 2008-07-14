@@ -68,7 +68,9 @@ if __name__ == '__main__':
             # update stemming
             for sentence in problem.get_new_sentences():
                 sentence.set_text(sentence.original)
+            #    sentence.stemmed = sentence.no_stop
             problem.query.set_text(problem.query.original)
+            #problem.query.stemmed = problem.query.no_stop
 
             #if problem.id != 'D0704': continue
             sys.stderr.write("%s %d\n" % (problem.id, sum([len(doc.sentences) for doc in problem.new_docs])))

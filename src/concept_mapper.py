@@ -572,6 +572,8 @@ def query_expand(docs, unit_selector, query):
             sent_units[sent.original][unit] += 1
 
     ## repeat until convergence
+    previous_entropy_sent = 0
+    previous_entropy_unit = 0
     for iter in range(1, 51):
         prev_sent_values = sent_values.copy()
 
@@ -595,9 +597,13 @@ def query_expand(docs, unit_selector, query):
         ## check for convergence
         entropy_sent = prob_util.entropy(sent_values)
         entropy_unit = prob_util.entropy(unit_values)
+        if entropy_sent >= previous_entropy_sent or entropy_unit >= previous_entropy_unit:
+            break
+        previous_entropy_sent = entropy_sent
+        previous_entropy_unit = entropy_unit
         dist = prob_util.klDistance(prev_sent_values, sent_values)
         sys.stderr.write('%d sent entropy [%1.4f]  unit entropy [%1.4f]  sent dist [%1.6f]\n' %(iter, entropy_sent, entropy_unit, dist))
-        if iter == 2: break
+        #if iter == 2: break
         if dist < 0.0001:
             sys.stderr.write('----------------------------')
             break
