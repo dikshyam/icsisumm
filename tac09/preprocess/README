@@ -1,0 +1,6 @@
+most code here is dead code from TAC08.
+
+python2.5 main.py --task=u09
+
+requires splitta (http://code.google.com/p/splitta/) in your PYTHONPATH (so that sbd.py and word_tokenize.py are available).
+set splitta's model location in framework.py

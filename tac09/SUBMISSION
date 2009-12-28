@@ -1,0 +1,67 @@
+System description:
+1) extract concepts
+2) find the selection of sentences that maximize weighted concept recall
+
+Concept weighting:
+Stem bigrams w/o double stopwords, weighted by document frequency
+* specific to set A:
+- DF(concept) >= 3
+- filter sentences by query
+* specific to set B:
+- concepts in first sentence count double
+- DF(concept) >= 4
+- use all sentences
+
+Sentence candidates:
+- P(unresolved pronoun) <= 0.4
+- length >= 10
+- not enclosed in quotes
+- overlap with concepts
+
+ILP:
+find selection of sentences with length <= 100 words,
+that maximize sum_i w_i c_i where w_i is a concept's weight
+and c_i denotes it's presence in the summary.
+Prefer shorter summaries for same concepts by penalizing
+the objective function (- 0.0001 * sum_length)
+
+Ordering:
+1) promote first sentence of a document as first of the summary
+2) group by document
+3) order by date
+
+Sentence segmentation:
+use the Splitta system
+reglue sentences in quotes
+
+Preprocessing:
+clean up first sentence in article (remove datelines, titles, authorship)
+remove some say-clauses at the end of sentences
+remove some adverbs at the begining of sentences
+
+Compression:
+Semantic Role Labeling (B. Bohnet's CoNLL'09 System)
+- allow removal of AM-TMP and AM-MNR (temporal and manner), if score > 0.6
+- allow removal of said-clauses (say, tell, write, report)
+- allow removal of TMP arcs from dependency parse tree if contains day-of-week and len < 4
+- keep 10-longest compressions, drop if length < orig_len / 2
+- remove parentheses
+- detokenize
+
+Unresolved pronoun detection:
+Training on OntoNotes 2.9 (WSJ) Coref data.
+Features extracted from parse tree (berkeley parser).
+Icsiboost (adaboost) classifier.
+F-score ~ 90 at the pronoun level
+
+Rouge scores on tac08:
+Without compression (ICSI-UTD1)
+AVG (A)  0.3849   0.1171   0.0507   0.0273   0.1458  
+AVG (B)  0.3795   0.1136   0.0539   0.0322   0.1459  
+AVG      0.3822   0.1153   0.0523   0.0297   0.1458  
+
+With compression (ICSI-UTD2)
+AVG (A)  0.3875   0.1171   0.0500   0.0269   0.1468  
+AVG (B)  0.3779   0.1111   0.0528   0.0315   0.1449  
+AVG      0.3827   0.1141   0.0514   0.0292   0.1458  
+

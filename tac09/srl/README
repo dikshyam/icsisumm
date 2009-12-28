@@ -1,0 +1,50 @@
+You should generate SRL in CoNLL'09 format with scores added to the argument labels (ex: A1 => A1_0.2345).
+The score threshold is set to .6 in ../compression.py (you should set it according to the error distribution of your SRL system).
+
+We used Bernd Bohnet's SRL system as described in "Efficient Parsing of Syntactic and Semantic Dependency Structures". Proceedings of Conference on Natural Language Learning (CoNLL), Boulder, 67-72. Bernd Bohnet. (2009) http://aclweb.org/anthology-new/W/W09/W09-0631.pdf
+
+Example:
+
+1	Interestingly	_	Interestingly	RB	RB	_	_	17	_	ADV	_	_	_	_	AM-DIS_0.15728228956016016	_
+2	,	_	,	,	,	_	_	17	_	P	_	_	_	_	_	_
+3	Indian	_	Indian	JJ	JJ	_	_	5	_	NMOD	_	_	_	_	_	_
+4	Home	_	Home	NN	NN	_	_	5	_	NMOD	_	_	_	_	_	_
+5	Minister	_	Minister	NN	NN	_	_	17	_	SBJ	_	_	_	A0_0.6728984448537499	A0_0.6114078561015412	_
+6	Shivraj	_	Shivraj	NNP	NNP	_	_	7	_	NAME	_	_	_	_	_	_
+7	Patil	_	Patil	NNP	NNP	_	_	5	_	APPO	_	_	_	_	_	_
+8	,	_	,	,	,	_	_	5	_	P	_	_	_	_	_	_
+9	who	_	who	WP	WP	_	_	10	_	SBJ	_	_	_	A0_0.45302932452172057	_	_
+10	had	_	have	VBD	VBD	_	_	5	_	NMOD	_	_	_	_	_	_
+11	recently	_	recently	RB	RB	_	_	10	_	TMP	_	_	_	AM-TMP_0.55249048122416	_	_
+12	visited	_	visit	VBN	VBN	_	_	10	_	VC	_	Y_0.589266	visit.01	_	_	_
+13	Kashmir	_	Kashmir	NNP	NNP	_	_	12	_	OBJ	_	_	_	A1_0.460700933240664	_	_
+14	for	_	for	IN	IN	_	_	12	_	ADV	_	_	_	R-AM-DIR_0.0	_	_
+15	three-days	_	three-day	NNS	NNS	_	_	14	_	PMOD	_	_	_	_	_	_
+16	,	_	,	,	,	_	_	5	_	P	_	_	_	_	_	_
+17	told	_	tell	VBD	VBD	_	_	0	_	ROOT	_	Y_0.998944	tell.01	_	_	_
+18	reporters	_	reporter	NNS	NNS	_	_	17	_	OBJ	_	_	_	_	A2_0.5744512518575735	_
+19	in	_	in	IN	IN	_	_	18	_	LOC	_	_	_	_	_	_
+20	Delhi	_	Delhi	NNP	NNP	_	_	19	_	PMOD	_	_	_	_	_	_
+21	that	_	that	IN	IN	_	_	17	_	OBJ	_	_	_	_	A1_0.38153978159769003	_
+22	he	_	he	PRP	PRP	_	_	23	_	SBJ	_	_	_	_	_	A0_0.6099077134329027
+23	was	_	be	VBD	VBD	_	_	21	_	SUB	_	_	_	_	_	_
+24	yet	_	yet	RB	RB	_	_	23	_	TMP	_	_	_	_	_	_
+25	to	_	to	TO	TO	_	_	23	_	OPRD	_	_	_	_	_	_
+26	submit	_	submit	VB	VB	_	_	25	_	IM	_	Y_0.615323	submit.01	_	_	_
+27	his	_	his	PRP$	PRP$	_	_	28	_	NMOD	_	_	_	_	_	_
+28	report	_	report	NN	NN	_	_	26	_	OBJ	_	_	_	_	_	A1_0.5796771876936558
+29	to	_	to	TO	TO	_	_	26	_	ADV	_	_	_	_	_	A2_0.2627905386014334
+30	the	_	the	DT	DT	_	_	32	_	NMOD	_	_	_	_	_	_
+31	Prime	_	Prime	NN	NN	_	_	32	_	NMOD	_	_	_	_	_	_
+32	Minister	_	Minister	NN	NN	_	_	29	_	PMOD	_	_	_	_	_	_
+33	about	_	about	IN	IN	_	_	26	_	ADV	_	_	_	_	_	R-AM-DIR_0.0
+34	his	_	his	PRP$	PRP$	_	_	35	_	NMOD	_	_	_	_	_	_
+35	perceptions	_	perception	NNS	NNS	_	_	33	_	PMOD	_	_	_	_	_	_
+36	of	_	of	IN	IN	_	_	35	_	NMOD	_	_	_	_	_	_
+37	the	_	the	DT	DT	_	_	39	_	NMOD	_	_	_	_	_	_
+38	ground	_	ground	NN	NN	_	_	39	_	NMOD	_	_	_	_	_	_
+39	situation	_	situation	NN	NN	_	_	36	_	PMOD	_	_	_	_	_	_
+40	in	_	in	IN	IN	_	_	39	_	LOC	_	_	_	_	_	_
+41	Kashmir	_	Kashmir	NNP	NNP	_	_	40	_	PMOD	_	_	_	_	_	_
+42	.	_	.	.	.	_	_	17	_	P	_	_	_	_	_	_
+												

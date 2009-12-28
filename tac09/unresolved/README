@@ -1,0 +1,13 @@
+Unresolved pronoun classifier (pronouns with an antecedant in a different sentence).
+
+relies on python2.5, icsiboost (http://code.google.com/p/icsiboost), the berkeley parser (http://code.google.com/p/berkeleyparser/).
+train it using ontonotes data (LDC2009T24).
+
+fix the path for ontonotes in ./train.sh
+put icsiboost in the PATH variable of your shell.
+run ./train.sh
+
+a model is provided in icsiboost.{shyp,names} to be used with the threshold in the trace from training (icsiboost.iter).
+
+parse sentences with the berkeley parser (http://code.google.com/p/berkeleyparser/) and put the result in *.sent.tok.parsed. fix the path in decode.sh
+run ./decode.sh

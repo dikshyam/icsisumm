@@ -1,0 +1,13 @@
+This is the code "as is" of ICSI's TAC'09 submission. It relies on a lot of local things and might not be functionnal at all outside of ICSI. Also, there is a lot of dead code from our TAC'08 system.
+
+Requires glpsol (http://gnu.org/software/glpk)
+First, you need to set paths in all scripts to point to the local version of the tools/dependencies.
+
+1) run preprocessing from preprocess/ (see README in that directory)
+2) run SRL system on *.tok (see README, you need your own SRL system)
+3) run create_compressed_tac09.sh which generates compressed variants and the unresolved pronoun classifier
+
+You can switch between inputs in inference.py to generate our submission with/without sentence compression (ICSI1/ICSI2)
+4) run python inference.py --task u09
+
+The submission is described in SUBMISSION
