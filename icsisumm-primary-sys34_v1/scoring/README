@@ -1,0 +1,21 @@
+EVALUATION WITH ROUGE:
+
+1) dependences:
+
+rebuild those dependences:
+* libxml can be downloaded at http://xmlsoft.org/
+* XML::Parser http://search.cpan.org/dist/XML-Parser/
+
+2) get ROUGE 1.5.5 at http://berouge.com/contactus.aspx, then extract and patch it
+
+tar xf ROUGE-1.5.5.tar.gz
+cd RELEASE-1.5.5
+patch -p1 < ../ROUGE-1.5.5.patch
+chmod +x ROUGE-1.5.5_faster.pl
+cd ..
+mv RELEASE-1.5.5 ROUGE-1.5.5
+
+The patch adds caching of scoring units for faster results.
+Check that you get more or less the same files as listed in ROUGE-1.5.5.files.gz
+
+3) you can find a ROUGE tutorial here http://kavita-ganesan.com/rouge-howto

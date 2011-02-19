@@ -1,0 +1,7 @@
+The GNU Linear Programming Kit can be downloaded at http://www.gnu.org/software/glpk/
+
+tar xf glpk-4.43.tar.gz
+cd glpk-4.43
+./configure
+make
+cd ..

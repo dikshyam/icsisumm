@@ -1,0 +1,7 @@
+DATA:
+
+put in this directory the TAC data in subdirectories named after the year of the evaluation.
+See http://www.nist.gov/tac/data/index.html for more info on how to get the data from NIST.
+The resulting layout should be as listed in 08.files.gz and 09.files.gz (for TAC'08 and TAC'09).
+
+stopwords.english was downloaded at ftp://ftp.cs.cornell.edu/pub/smart/english.stop

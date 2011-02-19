@@ -1,0 +1,22 @@
+Please cite those papers:
+
+@inproceedings{favre2009tac,
+    author={Gillick, Daniel and Favre, Benoit and Hakkani-Tur, Dilek and Bohnet, Berndt and Liu, Yang and Xie, Shasha},
+    title={{The ICSI/UTD Summarization System at TAC 2009}},
+    booktitle={Proc. of the Text Analysis Conference workshop, Gaithersburg, MD (USA)},
+    year={2009}
+}
+
+@inproceedings{favre2008tac,
+    author={Gillick, Daniel and Favre, Benoit and Hakkani-Tur, Dilek},
+    title={{The ICSI Summarization System at TAC 2008}},
+    booktitle={Proc. of the Text Analysis Conference workshop, Gaithersburg, MD (USA)},
+    year={2008}
+}
+
+@inproceedings{favre2009sgm,
+    author={Gillick, Daniel, Favre, Benoit},
+    title={{A Scalable Global Model for Summarization}},
+    booktitle={NAACL/HLT 2009 Workshop on Integer Linear Programming for Natural Language Processing}
+    year={2009},
+}

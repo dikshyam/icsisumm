@@ -1,0 +1,12 @@
+Metadata-Version: 1.0
+Name: nltk
+Version: 0.9.2
+Summary: Natural Language Toolkit
+Home-page: http://nltk.sf.net/
+Author: Steven Bird, Edward Loper, Ewan Klein
+Author-email: sb@csse.unimelb.edu.au
+License: GNU Public License
+Description: The Natural Langauge Toolkit (NLTK) is a Python package for
+        processing natural language text.  NLTK requires Python 2.4 or higher.
+Keywords: NLP,CL,natural language processing,computational linguistics,parsing,tagging,tokenizing,syntax,linguistics,language,natural language
+Platform: UNKNOWN

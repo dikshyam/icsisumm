@@ -1,0 +1,14 @@
+This is the ICSI summarization system at TAC'09. This setup only runs
+sys-34, the primary submission that does not involve sentence compression.
+
+Download and setup the data from NIST (see data/README)
+
+Download and setup ROUGE-1.5.5 (see scoring/README)
+
+Rebuild GLPK (see solver/README)
+
+Make sure you have python 2.6+ installed
+
+run ./run-icsi-primary-sys34.sh
+
+get the output from ./output/u09/summary
