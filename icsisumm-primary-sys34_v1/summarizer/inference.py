@@ -1,5 +1,5 @@
 import sys, os, util, re, collections
-import prob_util, decoder2, decoder_localsolver
+import prob_util, decoder2, decoder_localsolver, decoder_nbest
 
 class Sentence:
     def __init__(self, id, order, orig, doc, tok=None, parse=None, par=None, unresolved=False):
@@ -661,7 +661,8 @@ def make_summary(data_path, id, out_path, summ_path, length, options):
     if options.decoder == "localsolver":
         summ_sent_nums = decoder_localsolver.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
     else:
-        summ_sent_nums = decoder2.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
+        #summ_sent_nums = decoder2.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
+        summ_sent_nums = decoder_nbest.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
     #usable_sents = open(orig_file).read().splitlines()
     #summary = [usable_sents[i] for i in summ_sent_nums]
     #summary = [compressed_sents[i] for i in summ_sent_nums]
