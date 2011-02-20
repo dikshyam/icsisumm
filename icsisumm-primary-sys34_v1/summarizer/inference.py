@@ -660,21 +660,31 @@ def make_summary(data_path, id, out_path, summ_path, length, options):
     #summ_sent_nums = map(int, os.popen(cmd).read().splitlines())
     if options.decoder == "localsolver":
         summ_sent_nums = decoder_localsolver.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
+    elif options.decoder == "nbest":
+        summ_sent_nums = decoder_nbest.decode(length, length_file, sentence_concepts_file, concept_weights_file, options.nbest)
     else:
-        #summ_sent_nums = decoder2.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
-        summ_sent_nums = decoder_nbest.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
-    #usable_sents = open(orig_file).read().splitlines()
-    #summary = [usable_sents[i] for i in summ_sent_nums]
-    #summary = [compressed_sents[i] for i in summ_sent_nums]
-    summary = [sents[i] for i in summ_sent_nums]
-    
-    ## order sentences
-    summary = order(summary)
-    ## output summary goes in the summary directory in the out_path
-    if 'tac08' in out_path: id = id[:5] + id[6:]
-    summary_fh = open(summ_path + id, 'w')
-    for sent in summary:
-        summary_fh.write('%s\n' %sent)
+        summ_sent_nums = decoder2.decode(length, length_file, sentence_concepts_file, concept_weights_file, group_file, depend_file, atleast_file)
+    if options.decoder == "nbest":
+        for n in range(len(summ_sent_nums)):
+            summary = [sents[i] for i in summ_sent_nums[n]]
+            ## order sentences
+            summary = order(summary)
+            ## output summary goes in the summary directory in the out_path
+            #if 'tac08' in out_path: id = id[:5] + id[6:]
+            summary_fh = open(summ_path + id + ".%d" % n, 'w')
+            for sent in summary:
+                summary_fh.write('%s\n' %sent)
+            summary_fh.close()
+    else:
+        summary = [sents[i] for i in summ_sent_nums]
+        ## order sentences
+        summary = order(summary)
+        ## output summary goes in the summary directory in the out_path
+        if 'tac08' in out_path: id = id[:5] + id[6:]
+        summary_fh = open(summ_path + id, 'w')
+        for sent in summary:
+            summary_fh.write('%s\n' %sent)
+        summary_fh.close()
 
 from optparse import OptionParser
 def get_options(parser=None):
@@ -696,7 +706,8 @@ def get_options(parser=None):
                       help='path of input files')
     parser.add_option('-o', '--output-path', dest='outpath', type='str',
                       help='path to store output')
-    parser.add_option('--decoder', dest='decoder', type='str', default="glpsolve", help='ILP decoder (glpsolve or localsolver)')
+    parser.add_option('--decoder', dest='decoder', type='str', default="glpsolve", help='ILP decoder (glpsolve, localsolver, nbest)')
+    parser.add_option('--nbest', dest='nbest', type='int', default=100, help='depth of nbest')
     return parser.parse_args()
     
 if __name__ == '__main__':

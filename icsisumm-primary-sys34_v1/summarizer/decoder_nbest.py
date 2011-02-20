@@ -1,7 +1,7 @@
 import sys, os
 import glpk
 
-def decode(max_length, sentence_length_file, concepts_in_sentence_file, concept_weight_file, sentence_group_file=None, dependency_file=None, atleast=None):
+def decode(max_length, sentence_length_file, concepts_in_sentence_file, concept_weight_file, nbest=1):
     concept_id = {}
     concept = 0
     concept_weights = {}
@@ -44,24 +44,12 @@ def decode(max_length, sentence_length_file, concepts_in_sentence_file, concept_
     lp.cols.add(num_concepts + num_sentences)
     for col in lp.cols:
         col.bounds = 0.0, 1.0
-    # build objective
-    #objective = []
     for concept, weight in concept_weights.items():
         if concept not in index: continue # skip unused concepts
         lp.obj[concept] = weight
-        #objective.append("%+g c%d" % (weight, concept))
-        #solver.binary["c%d" % concept] = concept
-    #solver.objective["score"] = " ".join(objective)
-
-    # sentence => concepts
-    #for sentence, concepts in sentence_concepts.items():
-        #solver.binary["s%d" % sentence] = sentence
-    #    for concept in concepts:
-    #        solver.constraints["sent_%d" % len(solver.constraints)] = "s%d - c%d <= 0" % (sentence, concept)
 
     # concept => sentence
     for concept in index:
-        #solver.constraints["index_%d" % len(solver.constraints)] = " + ".join(["s%d" % x for x in index[concept]]) + " - c%d >= 0" % concept
         lp.rows.add(1)
         row = lp.rows[-1]
         row.bounds = 0, None
@@ -69,22 +57,17 @@ def decode(max_length, sentence_length_file, concepts_in_sentence_file, concept_
         matrix.append((concept, -1))
         row.matrix = matrix
 
-    #length_constraint = []
     length_matrix = []
     sentence = 0
     for line in open(sentence_length_file):
         if sentence in sentence_concepts:
             length = float(line.strip())
             length_matrix.append((num_concepts + sentence, length))
-            #length_constraint.append("%s s%d" % (length, sentence))
             lp.obj[num_concepts + sentence] = - float(length) / 1000.0
-            #solver.objective["score"] += " - %g s%d" % (float(length) / 1000.0, sentence)
         sentence += 1
     lp.rows.add(1)
     lp.rows[-1].bounds = None, max_length
     lp.rows[-1].matrix = length_matrix
-
-    #solver.constraints["length_%d" % len(solver.constraints)] = " + ".join(length_constraint) + " <= " + str(max_length)
 
     sys.stderr.write("ilp: %d sentences, %d concepts\n" % (num_sentences, num_concepts))
 
@@ -97,19 +80,27 @@ def decode(max_length, sentence_length_file, concepts_in_sentence_file, concept_
     assert result == None
     if lp.status != 'opt': return None # no exact solution
 
-    for n in range(1):
+    output = []
+    for n in range(nbest - 1):
         selection = []
         for i in range(num_sentences):
             if lp.cols[num_concepts + i].value > 0.99:
                 selection.append(i)
 
+        output.append(selection)
         print lp.obj.value, selection
-        #lp.rows.add(1)
-        #lp.rows[-1].matrix = [(num_concepts + sentence, 1.0) for sentence in selection]
-        #lp.rows[-1].bounds = None, len(selection) - 1
-        #lp.simplex()
-        #lp.intopt()
-    return selection
+        lp.rows.add(1)
+        lp.rows[-1].matrix = [(num_concepts + sentence, 1.0) for sentence in selection]
+        lp.rows[-1].bounds = None, len(selection) - 1
+        lp.simplex()
+        lp.intopt()
+    selection = []
+    for i in range(num_sentences):
+        if lp.cols[num_concepts + i].value > 0.99:
+            selection.append(i)
+    output.append(selection)
+    print lp.obj.value, selection
+    return output
 
 if __name__ == '__main__':
     if len(sys.argv) < 5 or len(sys.argv) > 8:
